@@ -318,26 +318,66 @@ class Glass:
     def StringNoPadding(self):
         return self.String().rstrip('\0')
 
-    def removePadding(self,pad):
+    # def removePadding(self,pad):
+    #     if pad != -1:
+    #         self.chunks[-1] = self.chunks[-1][:-pad]
+
+    #     crp = []
+    #     for b in self.chunks[-1]:
+    #         if 0 == b:
+    #             break 
+    #         crp.append(b)
+    #     self.chunks[-1] = crp
+    #     return crp
+
+    def removePadding(self, pad):
+        if self.chunks[-1] is None:
+            print("Warning: Last chunk is missing, skipping padding removal.")
+            return
+
         if pad != -1:
             self.chunks[-1] = self.chunks[-1][:-pad]
 
         crp = []
         for b in self.chunks[-1]:
-            if 0 == b:
+            if b == 0:
                 break 
             crp.append(b)
         self.chunks[-1] = crp
         return crp
     
-    def save(self,file_name, pad = -1):
-        self.removePadding(pad)
-        with open(file_name,'wb') as f:
-            for c in self.chunks:
-                f.write(bytes(c))
-#             logging.info('saved')
+#     def save(self,file_name, pad = -1):
+#         self.removePadding(pad)
+#         with open(file_name,'wb') as f:
+#             for c in self.chunks:
+#                 f.write(bytes(c))
+# #             logging.info('saved')
+#             print('saved')
+#             f.close()
+
+    def save(self, file_name, pad = -1):
+    # Safely remove padding if possible
+        if self.chunks[-1] is not None:
+            self.removePadding(pad)
+        else:
+            print("Warning: Last chunk is None. Skipping padding removal.")
+
+        missing_chunks = []
+
+        with open(file_name, 'wb') as f:
+            for i, c in enumerate(self.chunks):
+                if c is not None:
+                    f.write(bytes(c))
+                else:
+                    # Save placeholder bytes for missing chunks
+                    missing_chunks.append(i)
+                    f.write(bytes([0]*self.chunk_size))
             print('saved')
-            f.close()
+
+        # Write log of missing chunks
+        with open(file_name + ".log", 'w') as logf:
+            for idx in missing_chunks:
+                logf.write(f"Missing chunk: {idx}\n")
         
     def binString(self):
         bs = b''
