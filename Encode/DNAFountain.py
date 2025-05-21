@@ -12,6 +12,8 @@ from reedsolo import RSCodec
 from Encode.Helper_Functions import *
 from Encode.RPNG import * 
 
+from Encode.Helper_Functions import byte_to_bitarray, bitarray_to_byte
+from Encode.Polar.polarcodes import polar_encode_bits
 
 #----------------------------------------------------Droplet-------------------------------------------------#  
 class Droplet:
@@ -33,6 +35,8 @@ class Droplet:
         if self.DNA is not None:
             return self.DNA
         self.DNA = byte_to_dna(self._package())
+        print(f"[DEBUG] Strand length: {len(self.DNA)} nucleotides")
+        print(f"[DEBUG] Seed: {self.seed}, Chunks: {sorted(self.num_chunks)}")
         return self.DNA
     
     def chunkStr(self):
@@ -73,7 +77,8 @@ class DNAFountain:
                 rs = 0, 
                 c_dist = 0.1, 
                 delta = 0.5, 
-                scanner = None
+                scanner = None,
+                ecc_method = "none"
                 ):
 
         #alpha is the redundency level
@@ -86,7 +91,29 @@ class DNAFountain:
         #max_homopolymer: the largest homopolymer allowed
         #gc: the allowable range of gc +- 50%
 
+        self.ecc_method = ecc_method 
+
         #data:
+        self.file_in = file_in
+        # Apply Polar ECC on the whole data stream before chunking
+        if self.ecc_method == "polar":
+            # Join all input chunks into 1 binary stream
+            data_bytes = b''.join(file_in)
+            bit_data = byte_to_bitarray(data_bytes)
+            encoded_bits = polar_encode_bits(bit_data, N=128, K=64)
+            # encoded_bits = []
+            # K = 64
+            # N = 128
+            # for i in range(0, len(bit_data), K):
+            #     chunk = bit_data[i:i+K]
+            #     encoded = polar_encode_bits(chunk, N=N, K=K)
+            #     encoded_bits.extend(encoded)
+            encoded_bytes = bitarray_to_byte(encoded_bits)
+
+            # Re-chunk the new encoded data
+            chunk_size = len(file_in[0])
+            file_in = [encoded_bytes[i:i + chunk_size] for i in range(0, len(encoded_bytes), chunk_size)]
+
         self.file_in = file_in
         self.chunk_size = len(file_in[0])
         self.num_chunks = len(file_in)
@@ -187,7 +214,7 @@ class DNAFountain:
             return 1
         return 0
 
-    def save(self,file_name = 'out.dna'):
+    def save(self,file_name = 'out.dna'):        
         with open(file_name, 'w') as f:
             # f.write('Fountain code\n')
             # f.write('CN: ' + str(self.num_chunks) +'\n')
@@ -215,7 +242,7 @@ class Glass:
     def __init__(self, in_file_name, chunk_num, header_size = 4, 
                  rs = 0, c_dist = 0.1, delta = 0.5, 
                 flag_correct = True, gc = 0.05, max_homopolymer = 3, 
-                max_hamming = 100, chunk_size = 32, exDNA = False, np = False, truth = None):
+                max_hamming = 100, chunk_size = 32, exDNA = False, np = False, truth = None, ecc_method="none"):
         
         self.entries = []
         self.droplets = set()
@@ -363,6 +390,20 @@ class Glass:
             print("Warning: Last chunk is None. Skipping padding removal.")
 
         missing_chunks = []
+
+        if getattr(self, "ecc_method", None) == "polar":
+            reconstructed = b''.join([bytes(c) if c else b'\x00' * self.chunk_size for c in self.chunks])
+            bit_data = byte_to_bitarray(reconstructed)
+            decoded_bits = polar_decode_bits(bit_data, N=128, K=64)
+            # decoded_bits = []
+            # for i in range(0, len(bit_data), N):
+            #     chunk = bit_data[i:i+N]
+            #     decoded = polar_decode_bits(chunk, N=N, K=K)
+            #     decoded_bits.extend(decoded)
+            decoded_bytes = bitarray_to_byte(decoded_bits)
+
+            # Re-split decoded_bytes into chunks
+            self.chunks = [list(decoded_bytes[i:i + self.chunk_size]) for i in range(0, len(decoded_bytes), self.chunk_size)]
 
         with open(file_name, 'wb') as f:
             for i, c in enumerate(self.chunks):

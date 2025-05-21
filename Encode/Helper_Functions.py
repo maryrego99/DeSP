@@ -322,3 +322,20 @@ def rs_decode(data, rs_obj = None, rs = None, max_hamming = 1):
         logging.debug('too many errors!')
         return -1, None
     return 0, data_corrected
+
+
+#------------------------Polar------------------------------------------#
+def byte_to_bitarray(byte_data):
+    """Convert bytes to list of bits"""
+    return [int(bit) for byte in byte_data for bit in format(byte, '08b')]
+
+def bitarray_to_byte(bit_array):
+    """Convert list of bits back to bytes"""
+    # Pad with zeros to make full bytes
+    if len(bit_array) % 8 != 0:
+        pad_len = 8 - (len(bit_array) % 8)
+        bit_array += [0] * pad_len
+    return bytes(
+        int("".join(map(str, bit_array[i:i+8])), 2)
+        for i in range(0, len(bit_array), 8)
+    )

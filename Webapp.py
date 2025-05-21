@@ -40,6 +40,8 @@ seq_platform = st.sidebar.selectbox('Sequencing Platform',['Illumina Sequencing'
 index = st.sidebar.slider('inspect index', max_value = 600, value = 0)
 
 st.sidebar.subheader('Parameters of Fountain code')
+use_polar = st.sidebar.checkbox("Enable Polar ECC")
+ecc_method = "polar" if use_polar else "none"
 alpha = st.sidebar.slider('Alpha', min_value = 0.25, max_value = 1.0, value = 0.5)
 rs = st.sidebar.slider('RS', min_value = 4, max_value = 10, value = 4)
 num_th = int(rs / 2)
@@ -72,7 +74,7 @@ if suffix in ['jpg','png']:
     st.image(in_file_name, width = 300)
 data,pad = preprocess(in_file_name,20)
 in_file_name, ' loaded and split into ', len(data), ' data chunks.'
-f = DNAFountain(data,alpha,rs = rs)
+f = DNAFountain(data,alpha,rs = rs, ecc_method=ecc_method)
 good, tries = f.encode()
 'Data encoded into ' ,good, ' DNA strands after ', tries, ' tries.'
 'Saved to ', in_dna_name
@@ -139,7 +141,7 @@ def plot_solve_num(solve_num, ret):
     st.write(fig)
 
 'Trying to decode from sequencing readouts.'
-g = Glass(out_dna_name, len(data), rs = rs)
+g = Glass(out_dna_name, len(data), rs = rs, chunk_size=len(data[0]), ecc_method=ecc_method)
 ret, solve_num, lineRead, chunksDone, errors = g.decode()
 plot_solve_num(solve_num, ret)
 if ret == 0: 

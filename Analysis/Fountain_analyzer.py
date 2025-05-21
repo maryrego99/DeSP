@@ -6,6 +6,7 @@ from scipy.stats import gumbel_r, poisson
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+
 def error_profile(out_dnas, rs = 2):
     lost_num = 0
     fail_num = 0
