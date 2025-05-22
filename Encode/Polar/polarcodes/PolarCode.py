@@ -163,7 +163,7 @@ class PolarCode:
         """
 
         self.message = m
-        self.x[self.frozen_lookup == 1] = m
+        self.x[self.frozen_lookup == 0] = m
         self.u = self.x.copy()
 
     def get_codeword(self):

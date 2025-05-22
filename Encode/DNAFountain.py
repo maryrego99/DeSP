@@ -12,6 +12,8 @@ from reedsolo import RSCodec
 from Encode.Helper_Functions import *
 from Encode.RPNG import * 
 
+# Toggle between RS and Polar encoding
+use_polar = True
 
 #----------------------------------------------------Droplet-------------------------------------------------#  
 class Droplet:
@@ -28,12 +30,56 @@ class Droplet:
 
         self.DNA = None
     
-    def toDNA(self, flag = None):
-        #this function wraps the seed, data payload, and Reed Solomon.
+    def toDNA(self, flag=None):
         if self.DNA is not None:
-            return self.DNA
-        self.DNA = byte_to_dna(self._package())
-        return self.DNA
+            return self
+
+        from Encode.Helper_Functions import byte_to_dna
+        from bitarray import bitarray
+        from Encode.Polar.polarcodes.Encode import Encode as PolarEncoder
+        from Encode.Polar.polarcodes.PolarCode import PolarCode
+
+        payload = self._package()
+
+        if use_polar:
+            print("[DEBUG] Polar encoding used")
+
+            # Convert payload bytes to bitarray
+            u = bitarray()
+            u.frombytes(payload)
+            K = len(u)
+            N = 256  # Keep this fixed
+
+            if K >= N:
+                raise ValueError(f"Payload too large for PolarCode(N={N}, K={K})")
+
+            # Setup PolarCode with K info bits
+            pc = PolarCode(N, K)
+
+            # Now set frozen bits correctly:
+            # 0 → info bits, 1 → frozen bits
+            pc.frozen_lookup = np.ones(N, dtype=int)  # Start with all frozen
+            pc.frozen_lookup[:K] = 0  # First K bits are info bits (unfrozen)
+
+            polar_encoder = PolarEncoder(pc)
+
+            # Confirm matching
+            if (pc.frozen_lookup == 0).sum() != K:
+                raise ValueError(f"Mismatch: expected {K} info bits, got {(pc.frozen_lookup == 0).sum()}")
+
+            print("len(u):", len(u))
+            print("Expected:", (polar_encoder.myPC.frozen_lookup == 0).sum())
+
+            pc.set_message(u)
+            x = pc.codeword
+            encoded = x.tobytes()
+
+        else:
+            encoded = self.rs_obj.encode(payload)
+
+        self.DNA = byte_to_dna(encoded)
+        print(f"[DEBUG] Strand length: {len(self.DNA)} nucleotides")
+        return self
     
     def chunkStr(self):
         num = 0
@@ -410,6 +456,12 @@ class Glass:
         errors = 0
         solve_num = []
         while True:
+            from Encode.Helper_Functions import dna_to_byte
+            from bitarray import bitarray
+            from Encode.Polar.polarcodes.Decode import Decode as PolarDecoder
+            from Encode.Polar.polarcodes.PolarCode import PolarCode
+
+
             #read line
             try:     
                 dna = f.readline().rstrip('\n')
@@ -426,8 +478,53 @@ class Glass:
                 # print("Finished reading input file. Failed to decode!")
                 return -1, solve_num, line, self.chunksDone(), errors
             line += 1
+
+            if use_polar:
+                try:
+                    print("[DEBUG] Using Polar decoding")
+                    byte_data = dna_to_byte(dna)
+                    bit_data = bitarray()
+                    bit_data.frombytes(byte_data)
+                    N = 256
+                    K = len(bit_data)
+                    pc = PolarCode(N, K)
+                    pc.set_codeword(bit_data[:N])
+                    polar_decoder = PolarDecoder(pc)
+                    # decoded_bits = pc.message_received
+                    decoded_bytes = pc.message_received.tobytes()
+                    flag = 0
+                except Exception as e:
+                    print(f"[ERROR] Polar decoding failed: {e}")
+                    flag = -1
+                    decoded_bytes = None
+            else:
+                try:
+                    byte_data = dna_to_byte(dna)
+                    decoded_bytes = self.rs_obj.decode(byte_data)
+                    flag = 0
+                except Exception as e:
+                    print(f"[ERROR] RS decoding failed: {e}")
+                    flag = -1
+                    decoded_bytes = None
             
-            seed, data = self.add_dna(dna)
+            # seed, data = self.add_dna(dna)
+
+            # Reuse your decoded_bytes to continue processing manually
+            if flag == -1:
+                errors += 1
+                continue
+
+            # Extract seed and payload from decoded_bytes
+            seed_array = decoded_bytes[:self.header_size]
+            seed = sum([int(x)*256**i for i, x in enumerate(seed_array[::-1])])
+            payload = decoded_bytes[self.header_size:]
+
+            self.add_seed(seed)
+            self.PRNG.set_seed(seed)
+            blockseed, d, ix_samples = self.PRNG.get_src_blocks_wrap()
+            droplet = Droplet(payload, seed, ix_samples)
+            self.addDroplet(droplet)
+
             if seed == -1:
                 errors += 1
             #logging
