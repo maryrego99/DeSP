@@ -57,7 +57,7 @@ st.markdown('In this demonstrative web app, you will encode lena.jpg to DNA with
 st.markdown('You can assign parameters of DNA data storage channel and fountain code in the sidebar.\
     Play with different combinations of parameters to see how the noise structures and optimal encoding designs are influenced.') 
 
-file_name = 'lena_2.jpg'
+file_name = 'lena.jpg'
 file_name, suffix = file_name.split('.')
 file_name = 'files/' + file_name
 
@@ -149,13 +149,6 @@ if ret == 0:
     st.image(in_file_name, width = 300)
 else:
     st.write('Decoding Failed-.-')
-    g.save(out_file_name+"_failed",pad)
-    st.markdown(f'**{out_file_name}_failed**:')
-    try:
-        st.image(out_file_name + "_failed", width=300)
-    except:
-        st.warning("Could not display image — may be too corrupted or wrong format.")
-        st.text(f"{g.chunksDone()} of {g.num_chunks} chunks were recovered.")
 
 # ------------------------ optimizing ----------------------------- #
 st.header('Encoding Optimization')

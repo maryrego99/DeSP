@@ -231,10 +231,6 @@ class FT_Analyzer_Simplified:
 
         if plot: 
             no_zeros = np.where( (P_correct + P_error) > 0.00001)
-            no_zeros_size = no_zeros[0].size
-            if no_zeros_size == 0:
-                print("Warning: No significant values found in P_correct + P_error. Skipping plot.")
-                return
             s,e = np.min(no_zeros), np.max(no_zeros)
             X = X[s:e]
             P_error = P_error[s:e]
