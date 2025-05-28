@@ -140,8 +140,20 @@ def plot_solve_num(solve_num, ret):
 
 'Trying to decode from sequencing readouts.'
 g = Glass(out_dna_name, len(data), rs = rs)
-ret, solve_num, lineRead, chunksDone, errors = g.decode()
+ret, solve_num, lineRead, chunksDone, errors, coverage_vs_reads = g.decode()
 plot_solve_num(solve_num, ret)
+
+def plot_coverage_curve(coverage_vs_reads):
+    fig = plt.figure(figsize=(6,4), dpi=200)
+    plt.plot(coverage_vs_reads, color='blue', label='Unique chunks seen')
+    plt.xlabel('Read count')
+    plt.ylabel('Unique oligos covered')
+    plt.title('Coverage Curve')
+    plt.legend()
+    st.pyplot(fig, clear_figure=True)
+
+plot_coverage_curve(coverage_vs_reads)
+
 if ret == 0: 
     st.write('Decoding succeeded!')
     g.save(out_file_name,pad)

@@ -378,13 +378,13 @@ class Glass:
                 logging.info("Finished reading input file!")
                 # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 # print('Finished reading input file!')
-                return -1, solve_num, line, self.chunksDone(), errors
+                return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads
             if len(dna) == 0:
                 logging.info("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes", line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed())
                 logging.info("Finished reading input file!")
                 # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 # print("Finished reading input file. Failed to decode!")
-                return -1, solve_num, line, self.chunksDone(), errors
+                return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads
             line += 1
             
             seed, data = self.add_dna(dna)
@@ -395,6 +395,21 @@ class Glass:
                 logging.info("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes", line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed())
                 # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 pass
+
+            # Track coverage — number of unique oligos seen so far
+            if line == 1:
+                chunk_seen = [0] * self.num_chunks
+                coverage_vs_reads = []
+
+            # Access droplet to get the chunks it covers
+            if seed != -1:
+                self.PRNG.set_seed(seed)
+                blockseed, d, ix_samples = self.PRNG.get_src_blocks_wrap()
+
+                for chunk_id in ix_samples:
+                    chunk_seen[chunk_id] = 1
+
+                coverage_vs_reads.append(sum(chunk_seen))
             solve_num.append(self.chunksDone())
 
             if self.isDone():
@@ -403,6 +418,6 @@ class Glass:
                 # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 # print('done!')
                 f.close()
-                return 0, solve_num, line, self.chunksDone(), errors
+                return 0, solve_num, line, self.chunksDone(), errors, coverage_vs_reads
 
 
