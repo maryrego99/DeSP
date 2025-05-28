@@ -378,13 +378,13 @@ class Glass:
                 logging.info("Finished reading input file!")
                 # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 # print('Finished reading input file!')
-                return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads
+                return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen
             if len(dna) == 0:
                 logging.info("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes", line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed())
                 logging.info("Finished reading input file!")
                 # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 # print("Finished reading input file. Failed to decode!")
-                return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads
+                return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen
             line += 1
             
             seed, data = self.add_dna(dna)
@@ -410,6 +410,7 @@ class Glass:
                     chunk_seen[chunk_id] = 1
 
                 coverage_vs_reads.append(sum(chunk_seen))
+                # print(f"Chunk seen: {chunk_seen}")
             solve_num.append(self.chunksDone())
 
             if self.isDone():
@@ -418,6 +419,6 @@ class Glass:
                 # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 # print('done!')
                 f.close()
-                return 0, solve_num, line, self.chunksDone(), errors, coverage_vs_reads
+                return 0, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen
 
 

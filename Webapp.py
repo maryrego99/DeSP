@@ -155,11 +155,13 @@ def plot_coverage_curve(coverage_vs_reads):
 plot_coverage_curve(coverage_vs_reads)
 
 if ret == 0: 
+    print("Decoding succeeded!")
     st.write('Decoding succeeded!')
     g.save(out_file_name,pad)
     st.markdown(f'**{out_file_name}**:')
     st.image(in_file_name, width = 300)
 else:
+    print("'Decoding Failed-.-'")
     st.write('Decoding Failed-.-')
 
 # ------------------------ optimizing ----------------------------- #
