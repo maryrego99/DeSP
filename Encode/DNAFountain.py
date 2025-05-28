@@ -9,8 +9,9 @@ import numpy as np
 from collections import defaultdict
 
 from reedsolo import RSCodec
-from Encode.Helper_Functions import *
-from Encode.RPNG import * 
+from Helper_Functions import *
+from RPNG import * 
+from LDPC_Config import ldpc_encode, ldpc_decode
 
 
 #----------------------------------------------------Droplet-------------------------------------------------#  
@@ -54,14 +55,31 @@ class Droplet:
 
         seed_ord = self.seed.to_bytes(4, byteorder = 'big')
         # print(type(self.data[0]))
-        message = seed_ord + bytes(self.data)
-        # message = seed_ord + bytearray(self.data)
+
+        # message = seed_ord + bytes(self.data)
+        # # message = seed_ord + bytearray(self.data)
 
         
-        if self.rs > 0:
-            message = self.rs_obj.encode(message) #adding RS symbols to the message
+        # if self.rs > 0:
+        #     message = self.rs_obj.encode(message) #adding RS symbols to the message
 
-        return message
+        # return message
+
+        # Start with seed + data
+        payload = bytes(self.data)
+
+        # LDPC-only mode or Hybrid mode (RS = -1 for LDPC-only, -2 for Hybrid)
+        if self.rs in [-1, -2]:
+            print("[LDPC] Encoding payload")
+            payload = ldpc_encode(payload)
+
+        # RS encoding if enabled (rs > 0 or rs == -2)
+        if self.rs > 0:
+            payload = self.rs_obj.encode(seed_ord + payload)
+        else:
+            payload = seed_ord + payload
+
+        return payload
     
 #----------------------------------------------------Fountain-------------------------------------------------#      
 class DNAFountain:
@@ -245,19 +263,43 @@ class Glass:
         # transfer data to int
         data = dna_to_int_array(dna_string)
          
-        # try error correcting, if rs code is added and we want to correct error
+        # # try error correcting, if rs code is added and we want to correct error
+        # if self.rs > 0:
+        #     if self.correct: 
+        #         flag, data_corrected = rs_decode(data, self.RSCodec)
+        #         if flag == -1:
+        #             return -1, None
+        #     else: #if we don't want to evaluate the error correcting code, just delete the rs code
+        #         data_corrected  = data[0:len(data) - self.rs] 
+        # else:
+        #     data_corrected = data
+
+        # If RS is enabled (including hybrid)
         if self.rs > 0:
             if self.correct: 
                 flag, data_corrected = rs_decode(data, self.RSCodec)
                 if flag == -1:
                     return -1, None
-            else: #if we don't want to evaluate the error correcting code, just delete the rs code
-                data_corrected  = data[0:len(data) - self.rs] 
+            else:
+                data_corrected = data[0:len(data) - self.rs] 
         else:
             data_corrected = data
+
+        # Split seed and payload
+        seed_array = data_corrected[:self.header_size]
+        payload = data_corrected[self.header_size:]
+
+        # Apply LDPC decoding if enabled (rs == -1 for LDPC-only or rs == -2 for hybrid)
+        if self.rs in [-1, -2]:
+            print("[LDPC] Decoding payload")
+            try:
+                payload = ldpc_decode(bytes(payload))
+            except Exception as e:
+                print("LDPC decoding failed:", e)
+                return -1, None
         
         # split seed and payload
-        seed_array = data_corrected[:self.header_size]
+        # seed_array = data_corrected[:self.header_size]
         seed = sum([   int(x)*256**i        for i, x in enumerate(seed_array[::-1])   ])
         payload = data_corrected[self.header_size:]
         self.add_seed(seed)
