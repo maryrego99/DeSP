@@ -44,6 +44,10 @@ alpha = st.sidebar.slider('Alpha', min_value = 0.25, max_value = 1.0, value = 0.
 rs = st.sidebar.slider('RS', min_value = 4, max_value = 10, value = 4)
 num_th = int(rs / 2)
 
+st.sidebar.subheader("Multiple Run Experiment")
+do_multi_run = st.sidebar.checkbox("Enable multiple run experiment")
+multi_run_count = st.sidebar.slider("Number of runs", min_value=2, max_value=50, value=10) if do_multi_run else 1
+
 if seq_platform == 'Illumina Sequencing':
     arg.seq_TM = config.TM_NGS
 else:
@@ -57,7 +61,8 @@ st.markdown('In this demonstrative web app, you will encode lena.jpg to DNA with
 st.markdown('You can assign parameters of DNA data storage channel and fountain code in the sidebar.\
     Play with different combinations of parameters to see how the noise structures and optimal encoding designs are influenced.') 
 
-file_name = 'lena.jpg'
+# file_name = 'lena.jpg'
+file_name = 'dog.jpg'
 file_name, suffix = file_name.split('.')
 file_name = 'files/' + file_name
 
@@ -120,6 +125,8 @@ inspect(dnas_sam,inspect_index = index)
 st.subheader('Sequencing')
 SEQ = Sequencer(arg)
 dnas_seq = SEQ(dnas_sam)
+print("dns seq:")
+print(dnas_seq)
 inspect(dnas_seq,inspect_index = index)
 save_simu_result(dnas_seq,out_dna_name)
 'Simulation results saved to ', out_dna_name
@@ -140,28 +147,58 @@ def plot_solve_num(solve_num, ret):
 
 'Trying to decode from sequencing readouts.'
 g = Glass(out_dna_name, len(data), rs = rs)
-ret, solve_num, lineRead, chunksDone, errors, coverage_vs_reads = g.decode()
+ret, solve_num, lineRead, chunksDone, errors, coverage_vs_reads, chunks_seen = g.decode()
 plot_solve_num(solve_num, ret)
 
-def plot_coverage_curve(coverage_vs_reads):
+def plot_coverage_curve(coverage_vs_reads, label='Coverage Curve'):
     fig = plt.figure(figsize=(6,4), dpi=200)
-    plt.plot(coverage_vs_reads, color='blue', label='Unique chunks seen')
+    plt.plot(coverage_vs_reads, color='blue', label=label)
     plt.xlabel('Read count')
     plt.ylabel('Unique oligos covered')
-    plt.title('Coverage Curve')
+    plt.title(label)
     plt.legend()
     st.pyplot(fig, clear_figure=True)
 
-plot_coverage_curve(coverage_vs_reads)
+if do_multi_run:
+    st.write(f"Running {multi_run_count} decoding experiments to compute average coverage...")
+    all_coverage = []
+    for i in range(multi_run_count):
+        g = Glass(out_dna_name, len(data), rs = rs)
+        ret, solve_num, lineRead, chunksDone, errors, coverage_vs_reads, chunks_seen = g.decode()
+        all_coverage.append(coverage_vs_reads)
+    avg_coverage = np.mean(all_coverage, axis=0)
+    fig = plt.figure(figsize=(6,4), dpi=200)
+    for curve in all_coverage[:5]:
+        plt.plot(curve, color='gray', alpha=0.3)
+    plt.plot(avg_coverage, color='blue', label='Average coverage')
+    plt.xlabel("Read count")
+    plt.ylabel("Unique chunks seen")
+    plt.title("Average Coverage Across Runs")
+    plt.legend()
+    st.pyplot(fig)
+else:
+    g = Glass(out_dna_name, len(data), rs = rs)
+    ret, solve_num, lineRead, chunksDone, errors, coverage_vs_reads, chunks_seen = g.decode()
+    def plot_solve_num(solve_num, ret):
+        label = f'{len(solve_num)} reads -> {solve_num[-1]} solved'
+        if ret == 0: label += '; Succeed.'
+        else: label += '; Fail'
+        fig = plt.figure(figsize=(6,4), dpi=200)
+        plt.plot(solve_num, color='r', label=label)
+        plt.xlabel('Read count')
+        plt.ylabel('Solved chunks')
+        plt.legend()
+        st.write(fig)
 
-if ret == 0: 
-    print("Decoding succeeded!")
+    plot_solve_num(solve_num, ret)
+    plot_coverage_curve(coverage_vs_reads)
+
+if not do_multi_run and ret == 0: 
     st.write('Decoding succeeded!')
     g.save(out_file_name,pad)
     st.markdown(f'**{out_file_name}**:')
     st.image(in_file_name, width = 300)
-else:
-    print("'Decoding Failed-.-'")
+elif not do_multi_run:
     st.write('Decoding Failed-.-')
 
 # ------------------------ optimizing ----------------------------- #

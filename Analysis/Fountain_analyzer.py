@@ -57,12 +57,17 @@ class FT_Analyzer:
         self.decode_lines = []
         if encode: self.encode()
 
+        self.coverage = 1 + self.alpha
+        print(f"Effective Coverage = {self.coverage:.2f}x")
+        self.coverage = round(1 + self.alpha, 2)
+
     def encode(self):
         self.f = DNAFountain(self.data, self.alpha, rs = self.rs_length)
         good, tries = self.f.encode()
         self.good = good
+        self.coverage = round(1 + self.alpha, 2) 
         print(f'Encoding process done. Generated {good} strands after {tries} tries.')
-        print(f'Alpha: {self.alpha}, chunk_size: {self.chunk_size}, rs_length: {self.rs_length}, information_density: {round(self.chunk_size/(self.rs_length + self.chunk_size)/(1+self.alpha),4)}')
+        print(f'Alpha: {self.alpha}, Coverage: {self.coverage}x, chunk_size: {self.chunk_size}, rs_length: {self.rs_length}, information_density: {round(self.chunk_size/(self.rs_length + self.chunk_size)/(1+self.alpha),4)}')
         self.f.save(self.encode_path)
 
     def simu(self, save = True):
@@ -77,7 +82,7 @@ class FT_Analyzer:
     
     def decode(self, save = True):
         self.g = Glass(self.simu_path, len(self.data), rs = self.rs_length)
-        flag, solve_num, line, chunksDone, errors =  self.g.decode()
+        flag, solve_num, line, chunksDone, errors, coverage_vs_reads, chunk_seen =  self.g.decode()
         print('Decoding...', end = '\r')
         print("After reading %d lines, %d chunks are done. So far: %d rejections (%f)" % (line, chunksDone, errors, errors/(line+0.0)))
         if flag == -1: 
@@ -149,7 +154,10 @@ class FT_Analyzer:
         if plot:
             plt.plot(alpha_list,p_fail_list,label = 'fail prob',color = color)
             plt.fill_between(alpha_list,0,p_fail_list,alpha = 0.3, color = color)
-            plt.xlabel('Alpha')
+            coverage_list = [round(1 + a, 2) for a in alpha_list]
+            plt.xlabel('Coverage (x)')
+            plt.ylabel('Decoding Failure Probability')
+            plt.xticks(alpha_list, coverage_list, rotation=45)
             # plt.plot(alpha_list,info_ratio_list,label = 'information density')
             plt.legend()
         
