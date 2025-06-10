@@ -6,6 +6,7 @@ import sys
 import operator
 import math
 import numpy as np
+import zlib
 from collections import defaultdict
 
 from reedsolo import RSCodec
@@ -22,8 +23,8 @@ class Droplet:
         self.data = data
         self.seed = seed
         self.num_chunks = set(num_chunks)
-        self.rs = rs
-        self.rs_obj = rs_obj
+        # self.rs = rs
+        # self.rs_obj = rs_obj
         self.degree = degree
 
         self.DNA = None
@@ -58,10 +59,15 @@ class Droplet:
         # message = seed_ord + bytearray(self.data)
 
         
-        if self.rs > 0:
-            message = self.rs_obj.encode(message) #adding RS symbols to the message
+        # if self.rs > 0:
+        #     message = self.rs_obj.encode(message) #adding RS symbols to the message
 
-        return message
+        # return message
+
+        # use CRC32 instead of RS
+        crc_val = zlib.crc32(message)
+        crc_bytes = crc_val.to_bytes(4, byteorder='big')
+        return message + crc_bytes
     
 #----------------------------------------------------Fountain-------------------------------------------------#      
 class DNAFountain:
@@ -124,8 +130,10 @@ class DNAFountain:
     
     def calc_oligo_length(self):
         #return the number of nucleotides in an oligo:
-        bits = self.chunk_size * 8 + self.lfsr_l + self.rs * 8
-        return bits/4
+        # bits = self.chunk_size * 8 + self.lfsr_l + self.rs * 8
+        # return bits/4
+        bits = self.chunk_size * 8 + self.lfsr_l + 32  # CRC-32 = 4 bytes = 32 bits
+        return bits / 4
 
 
     def calc_stop(self):
@@ -233,28 +241,39 @@ class Glass:
 
         self.PRNG = PRNG(K = self.num_chunks, delta = delta, c = c_dist, np = np)
 
-        self.rs = rs
-        self.RSCodec = None
+        # self.rs = rs
+        # self.RSCodec = None
         self.correct = flag_correct
         self.seen_seeds = set()
         
-        if self.rs > 0:
-            self.RSCodec = RSCodec(rs)
+        # if self.rs > 0:
+        #     self.RSCodec = RSCodec(rs)
     
     def add_dna(self, dna_string):
         # transfer data to int
         data = dna_to_int_array(dna_string)
          
-        # try error correcting, if rs code is added and we want to correct error
-        if self.rs > 0:
-            if self.correct: 
-                flag, data_corrected = rs_decode(data, self.RSCodec)
-                if flag == -1:
-                    return -1, None
-            else: #if we don't want to evaluate the error correcting code, just delete the rs code
-                data_corrected  = data[0:len(data) - self.rs] 
-        else:
-            data_corrected = data
+        # # try error correcting, if rs code is added and we want to correct error
+        # if self.rs > 0:
+        #     if self.correct: 
+        #         flag, data_corrected = rs_decode(data, self.RSCodec)
+        #         if flag == -1:
+        #             return -1, None
+        #     else: #if we don't want to evaluate the error correcting code, just delete the rs code
+        #         data_corrected  = data[0:len(data) - self.rs] 
+        # else:
+        #     data_corrected = data
+
+        # Separate CRC
+        received_crc = int.from_bytes(data[-4:], byteorder='big')
+        data_wo_crc = data[:-4]
+
+        # Verify CRC
+        calc_crc = zlib.crc32(bytes(data_wo_crc))
+        if calc_crc != received_crc:
+            return -1, None
+
+        data_corrected = data_wo_crc
         
         # split seed and payload
         seed_array = data_corrected[:self.header_size]
