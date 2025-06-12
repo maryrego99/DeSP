@@ -10,7 +10,7 @@ from Model.config import DEFAULT_PASSER
 from Model.Model import Synthesizer, Decayer, PCRer, Sampler, Sequencer
 from Analysis.Analysis import dna_chunk, plot_oligo_number_distribution, plot_error_distribution, save_simu_result
 
-def run_multiple_coverage_experiments(file_path, alpha=0.5, rs=4, n_runs=30, max_reads=600):
+def run_multiple_coverage_experiments(file_path, alpha=0.5, rs=0, n_runs=30, max_reads=600):
     from copy import deepcopy
     from Model.config import DEFAULT_PASSER
 
@@ -19,7 +19,7 @@ def run_multiple_coverage_experiments(file_path, alpha=0.5, rs=4, n_runs=30, max
 
     # Hardcoded simulation parameters
     arg.syn_number = 30             # Number of strands synthesized per oligo
-    arg.syn_sub_prob = 0.05 / 3     # Substitution error rate (divided across 3 types)
+    arg.syn_sub_prob = 0.003 / 3     # Substitution error rate (divided across 3 types)
     arg.syn_yield = 0.98            # Synthesis yield
 
     arg.pcrc = 12                   # PCR cycles
@@ -110,18 +110,23 @@ def run_multiple_coverage_experiments(file_path, alpha=0.5, rs=4, n_runs=30, max
     plt.axhline(y=N, color='gray', linestyle='--', label='Full Coverage Target (N)')
 
     # Mark full coverage if achieved
-    if N in avg_coverage:
-        idx = list(avg_coverage).index(N)
-        plt.scatter(idx, N, color='red', label=f'Full Coverage at {idx} reads')
+    # if N in avg_coverage:
+    #     idx = list(avg_coverage).index(N)
+    #     plt.scatter(idx, N, color='red', label=f'Full Coverage at {idx} reads')
+
+    idx_candidates = np.where(np.array(avg_coverage) >= N)[0]
+    if len(idx_candidates) > 0:
+        idx = idx_candidates[0]
+        plt.scatter(idx, avg_coverage[idx], color='red', label=f'Full Coverage at {idx} reads')
 
     plt.xlabel("Read count")
     plt.ylabel("Unique oligos covered")
-    plt.title(f"Average Coverage Curve (α={alpha}, n={n_runs})")
+    plt.title(f"Average Coverage Curve (α={alpha}, subs_rate={arg.syn_sub_prob*3}, n={n_runs})")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
     os.makedirs("coverage-analysis/coverage_vs_reads", exist_ok=True)
-    plt.savefig(f"coverage-analysis/coverage_vs_reads/{file_path[6:]}_{n_runs}.png", dpi=300)
+    plt.savefig(f"coverage-analysis/coverage_vs_reads/{file_path[6:-4]}(α={alpha}, subs_rate={arg.syn_sub_prob*3}).png", dpi=300)
 
     plt.figure()
     plt.hist(dropout_counts, bins=range(0, max(dropout_counts)+2), color='red', alpha=0.6)
@@ -137,10 +142,10 @@ def run_multiple_coverage_experiments(file_path, alpha=0.5, rs=4, n_runs=30, max
     avg_dropouts = np.mean(dropout_counts)
 
     print(f"Avg reads to full coverage: {avg_reads:.2f}")
-    print(f"Success rate: {success_rate:.1f}% ({n_runs - failed_runs} / {n_runs})")
+    print(f"Full coverage achieved rate: {success_rate:.1f}% ({n_runs - failed_runs} / {n_runs})")
     print(f"Avg dropouts: {avg_dropouts:.2f}")
 
 if __name__ == "__main__":
     start_time = time.time()
-    run_multiple_coverage_experiments("files/lena.jpg", alpha=0.7, rs=4, n_runs=16)
+    run_multiple_coverage_experiments("files/lena.jpg", alpha=0.9, rs=0, n_runs=16) #rs =0, replaced with CRC
     print("Run time: %s seconds" % (time.time() - start_time))

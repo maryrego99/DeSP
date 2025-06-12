@@ -7,14 +7,14 @@ import numpy as np
 
 # Parameters
 file_name = "lena.jpg"       # input file path (should be in /files folder)
-rs_length = 4                # RS parity symbols
+rs_length = 0                # 0 for no RS
 chunk_size = 20              # bytes per chunk
 num_trials = 5              # number of simulations per alpha
 alphas = np.arange(0.1, 1.05, 0.05)  # alpha range from 0.0 to 1.0 (=> 1.0x to 2.0x coverage)
 
 # error sim
 arg = DEFAULT_PASSER
-arg.syn_sub_prob = 0.1 / 3
+arg.syn_sub_prob = 0.001 / 3
 
 
 # Model
