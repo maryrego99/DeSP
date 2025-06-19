@@ -1,0 +1,3 @@
+alpha,subs_rate,N,designed_oligos,crc_pass,crc_fail,total_reads,chunks_done,Coverage(x),avg_chunk_coverage,std_chunk_coverage,sum_chunk_hits,min_chunk_hit,max_chunk_hit,hist_path
+0.9,0.003,429,816,515,186,701,319,0.631,12.53,3.16,5377,5,26,coverage-analysis/seq-depth/chunk_hist/hist_alpha0.9_eps0.003_N429.png
+0.9,0.003,429,816,508,187,695,53,0.623,11.43,2.95,4903,3,22,coverage-analysis/seq-depth/chunk_hist/hist_alpha0.9_eps0.003_N429.png

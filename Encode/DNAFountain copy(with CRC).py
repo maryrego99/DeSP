@@ -388,6 +388,9 @@ class Glass:
         line = 0
         errors = 0
         solve_num = []
+        crc_pass = 0
+        crc_fail = 0
+        self.valid_droplets = [] 
         while True:
             #read line
             try:     
@@ -395,12 +398,16 @@ class Glass:
             except:
                 logging.info("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes", line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed())
                 logging.info("Finished reading input file!")
+                print(f"CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads: {line}")
                 # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 # print('Finished reading input file!')
                 return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen
             if len(dna) == 0:
                 logging.info("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes", line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed())
                 logging.info("Finished reading input file!")
+                print(f"CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads: {line}")
+                usable_ratio = crc_pass / (crc_pass + crc_fail)
+                print(f"Usable droplet ratio: {usable_ratio:.2%}")
                 # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 # print("Finished reading input file. Failed to decode!")
                 return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen
@@ -409,6 +416,14 @@ class Glass:
             seed, data = self.add_dna(dna)
             if seed == -1:
                 errors += 1
+                crc_fail += 1  # CRC failed
+            else:
+                crc_pass += 1  # CRC passed
+                self.valid_droplets.append((seed, data))
+
+            self.crc_pass = crc_pass
+            self.crc_fail = crc_fail 
+
             #logging
             if line % 200 == 0:
                 logging.info("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes", line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed())
@@ -435,6 +450,9 @@ class Glass:
             if self.isDone():
                 logging.info("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes", line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed())
                 logging.info("Done!")
+                print(f"CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads: {line}")
+                usable_ratio = crc_pass / (crc_pass + crc_fail)
+                print(f"Usable droplet ratio: {usable_ratio:.2%}")
                 # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 # print('done!')
                 f.close()

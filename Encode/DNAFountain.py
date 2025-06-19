@@ -390,6 +390,7 @@ class Glass:
         solve_num = []
         crc_pass = 0
         crc_fail = 0
+        self.valid_droplets = [] 
         while True:
             #read line
             try:     
@@ -418,6 +419,10 @@ class Glass:
                 crc_fail += 1  # CRC failed
             else:
                 crc_pass += 1  # CRC passed
+                self.valid_droplets.append((seed, data))
+
+            self.crc_pass = crc_pass
+            self.crc_fail = crc_fail 
 
             #logging
             if line % 200 == 0:

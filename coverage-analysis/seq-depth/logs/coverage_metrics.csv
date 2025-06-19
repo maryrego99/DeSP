@@ -1,0 +1,2 @@
+alpha,subs_rate,N,crc_pass,crc_fail,designed_oligos,total_reads,chunks_done,avg_coverage,std_coverage,coverage_x
+0.9,0.003,429,508,187,816,695,53,11.42890442890443,2.9490947546637165,0.6225490196078431

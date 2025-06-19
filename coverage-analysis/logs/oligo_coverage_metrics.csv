@@ -1,0 +1,5 @@
+file,alpha,subs_rate,N,designed_oligos,crc_pass,crc_fail,total_reads,chunks_done,true_oligo_coverage,oligo_coverage_std,decode_success,hist_path
+files/lena.jpg,0.9,0.003,429,816,489,212,701,114,1.0,0.0,0,coverage-analysis/oligo/oligo_hist_alpha0.9_eps0.003.png
+files/lena.jpg,0.9,0.003,429,816,489,212,701,90,1.0,0.0,0,coverage-analysis/oligo/oligo_hist_alpha0.9_eps0.003.png
+files/lena.jpg,0.9,0.003,429,816,513,187,700,125,1.0,0.0,0,coverage-analysis/oligo/oligo_hist_alpha0.9_eps0.003.png
+files/lena.jpg,0.9,0.003,429,816,514,171,685,429,1.0,0.0,1,coverage-analysis/oligo/oligo_hist_alpha0.9_eps0.003.png
