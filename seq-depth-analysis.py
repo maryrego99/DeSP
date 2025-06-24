@@ -26,7 +26,7 @@ def log_coverage_metrics(input_file, seq_counts_file, total_oligos, params, deco
 
     row = {
         "input_file": input_file,
-        "file": os.path.basename(seq_counts_file),
+        # "file": os.path.basename(seq_counts_file),
         "alpha": params.get("alpha"),
         "pcrc": params.get("pcrc"),
         "pcrp": params.get("pcrp"),
@@ -36,7 +36,7 @@ def log_coverage_metrics(input_file, seq_counts_file, total_oligos, params, deco
         "total_oligos": total_oligos,
         "total_reads": total_reads,
         "mean_coverage": round(mean_coverage, 2),
-        "%_oligos_seen": round(percent_seen, 2),
+        "%_oligo_recovery_rate": round(percent_seen, 2),
         "dropout_rate": round(dropout_rate, 2),
         "decoded_successfully": "Yes" if decoded_success else "No"
     }
@@ -50,9 +50,9 @@ def log_coverage_metrics(input_file, seq_counts_file, total_oligos, params, deco
 
     print(f"Coverage metrics logged to {out_csv}")
 
-def analyze_oligo_coverage(file_path, alpha, subs_rate):
+def analyze_oligo_coverage(file_path, alpha, subs_rate=0.003, seq_depth=10):
     rs = 0
-    chunk_size = 20 # increase -> lesser oligos
+    chunk_size = 20 # 36 # increase -> lesser oligos
 
     #input file into chunks
     data, pad = preprocess(file_path, chunk_size)
@@ -64,10 +64,10 @@ def analyze_oligo_coverage(file_path, alpha, subs_rate):
     arg.syn_number = 30
     arg.syn_sub_prob = subs_rate / 3
     arg.syn_yield = 0.99
-    arg.pcrc = 14
-    arg.pcrp = 0.9 #shouldnt change
-    arg.sam_ratio = 0.9
-    arg.seq_depth = 10 # vary ex:1-5, different recovery rates
+    # arg.pcrc = 14
+    # arg.pcrp = 0.9 #shouldnt change
+    # arg.sam_ratio = 0.9
+    arg.seq_depth = seq_depth # vary ex:1-5, different recovery rates
     from Model.config import TM_NGS, TM_NNP
     arg.seq_TM = TM_NGS # TM_NNP
 
@@ -148,9 +148,11 @@ def analyze_oligo_coverage(file_path, alpha, subs_rate):
         total_oligos=len(in_dnas),
         params=params,
         decoded_success = decoded_success,
-        out_csv="coverage-analysis/seq-depth/files/coverage_metrics.csv"
+        out_csv="coverage-analysis/seq-depth/files/coverage_metrics_3.0.csv"
     )
 
 
 if __name__ == "__main__":
-    analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.7, subs_rate=0.003)
+    for i in np.arange(1, 10.5, 0.5):
+        for _ in range(3): 
+            analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=1.5, subs_rate=0.0035, seq_depth=i)

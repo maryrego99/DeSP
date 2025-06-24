@@ -1,0 +1,5 @@
+- Run seq-depth-analysis.py first
+- This will run the simulation with varying levels of sequencing-depth for fixed alpha (Fountain Code redundancy)
+- Creates a CSV file with the metrics
+- Pass this csv file as input to analyze-oligo-count.py
+- This generates the plot of 'oligo recovery rate' vs 'mean coverage'
