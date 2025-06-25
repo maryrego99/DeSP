@@ -383,6 +383,36 @@ class Glass:
                 not_none.append(i)
         return not_none
     
+    def check_image_header(self, binary_data):
+        if binary_data.startswith(b'\xFF\xD8'):
+            return 'jpg'
+        elif binary_data.startswith(b'\x89PNG\r\n\x1a\n'):
+            return 'png'
+        return None
+    
+    def save_partial_if_valid(self, file_name_base, chunks, pad=-1):
+        if pad != -1 and pad > 0:
+            chunks = chunks[:-pad]
+
+        binary_data = b''.join(bytes(c) for c in chunks if c is not None)
+        img_type = self.check_image_header(binary_data)
+
+        if img_type:
+            file_name = f"{file_name_base}.{img_type}"
+            with open(file_name, 'wb') as f:
+                f.write(binary_data)
+            print(f"Partial image with valid header saved to: {file_name}")
+            with open("coverage-analysis/seq-depth/files/lena.jpg", "rb") as f:
+                original_header = f.read(1024)
+
+            patched = original_header + binary_data[1024:]
+
+            with open("patched_partial.jpg", "wb") as f:
+                f.write(patched)
+        else:
+            print("Partial output does not contain a valid image header — not saved.")
+            print("Decoding failed.")
+
     def decode(self):
         f = open(self.in_file_name,'r')
         line = 0
@@ -397,13 +427,13 @@ class Glass:
                 logging.info("Finished reading input file!")
                 # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 # print('Finished reading input file!')
-                return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen
+                return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen, self.chunks
             if len(dna) == 0:
                 logging.info("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes", line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed())
                 logging.info("Finished reading input file!")
                 # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 # print("Finished reading input file. Failed to decode!")
-                return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen
+                return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen, self.chunks
             line += 1
             
             seed, data = self.add_dna(dna)
@@ -438,6 +468,6 @@ class Glass:
                 # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 # print('done!')
                 f.close()
-                return 0, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen
+                return 0, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen, self.chunks
 
 

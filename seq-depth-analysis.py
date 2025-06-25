@@ -24,6 +24,8 @@ def log_coverage_metrics(input_file, seq_counts_file, total_oligos, params, deco
     percent_seen = 100 * nonzero_oligos/total_oligos if total_oligos > 0 else 0
     dropout_rate = 100 * dropout_oligos/total_oligos if total_oligos > 0 else 0
 
+    print(f"Non zero oligos: {nonzero_oligos}, Dropout oligos: {dropout_oligos}, Total Oligos: {total_oligos}")
+
     row = {
         "input_file": input_file,
         # "file": os.path.basename(seq_counts_file),
@@ -51,7 +53,7 @@ def log_coverage_metrics(input_file, seq_counts_file, total_oligos, params, deco
     print(f"Coverage metrics logged to {out_csv}")
 
 def analyze_oligo_coverage(file_path, alpha, subs_rate=0.003, seq_depth=10):
-    rs = 0
+    rs = 4
     chunk_size = 20 # 36 # increase -> lesser oligos
 
     #input file into chunks
@@ -120,13 +122,17 @@ def analyze_oligo_coverage(file_path, alpha, subs_rate=0.003, seq_depth=10):
     #Decoding
     print('Trying to decode from sequencing readouts.')
     g = Glass(noisy_dna_file, chunk_num=N, rs=rs)
-    ret, _, total_reads, chunks_done, errors, coverage_vs_reads, chunk_seen = g.decode()
+    ret, _, total_reads, chunks_done, errors, coverage_vs_reads, chunk_seen, chunks = g.decode()
     decoded_file = f"{file_path}_decoded.jpg"
     if ret ==0:
         print("Decoding successful")
         g.save(decoded_file)
     else:
-        print("Decoding failed.")
+        if chunks_done > 0:
+            g.save_partial_if_valid("partial_output", chunks, pad=0)
+        else:
+            print("No chunks recovered; nothing to save.")
+            print("Decoding failed.")
     
     # crc_pass = g.crc_pass
     # crc_fail = g.crc_fail
@@ -148,11 +154,12 @@ def analyze_oligo_coverage(file_path, alpha, subs_rate=0.003, seq_depth=10):
         total_oligos=len(in_dnas),
         params=params,
         decoded_success = decoded_success,
-        out_csv="coverage-analysis/seq-depth/files/coverage_metrics_3.0.csv"
+        out_csv="coverage-analysis/seq-depth/files/coverage_metrics_rs_a=.csv"
     )
 
 
 if __name__ == "__main__":
-    for i in np.arange(1, 10.5, 0.5):
-        for _ in range(3): 
-            analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=1.5, subs_rate=0.0035, seq_depth=i)
+    # for i in np.arange(4.5, 14.5, 0.5):
+    #     for _ in range(3): 
+    #         analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.9, subs_rate=0.0035, seq_depth=i)
+    analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.5, subs_rate=0.0035, seq_depth=12)
