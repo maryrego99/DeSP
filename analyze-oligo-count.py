@@ -9,32 +9,35 @@ def plot_recovery_vs_coverage(csv_file):
     df = pd.read_csv(csv_file) 
 
     df['mean_coverage'] = pd.to_numeric(df['mean_coverage'], errors='coerce')
-    df['%_oligo_recovery_rate'] = pd.to_numeric(df['%_oligo_recovery_rate'], errors='coerce')
+    df['oligo_recovery(syn)'] = pd.to_numeric(df['oligo_recovery(syn)'], errors='coerce')
+    df['oligo_recovery(decode)'] = pd.to_numeric(df['oligo_recovery(decode)'], errors='coerce')
+    df['dropout(syn)'] = pd.to_numeric(df['dropout(syn)'], errors='coerce')
+    df['dropout(decode)'] = pd.to_numeric(df['dropout(decode)'], errors='coerce')
 
-    alpha = df['alpha'].iloc[0]
+    alpha = df['α'].iloc[0]
     subs_rate = df['subs_rate'].iloc[0]
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(12, 6))
 
-    if any(df['decoded_successfully'] == 'Yes'):
-        first_success = df[df['decoded_successfully'] == 'Yes'].iloc[0]
+    if any(df['decode_success'] == 'Yes'):
+        first_success = df[df['decode_success'] == 'Yes'].iloc[0]
         success_coverage = first_success['mean_coverage']
-        success_recovery = first_success['%_oligo_recovery_rate']
-        success = df[df['decoded_successfully'] == 'Yes']
-        fail = df[df['decoded_successfully'] == 'No']
-        plt.plot(success['mean_coverage'], success['%_oligo_recovery_rate'], 'o-', label='Decoded: Yes', color='green')
+        success_recovery = first_success['oligo_recovery(decode)']
+        success = df[df['decode_success'] == 'Yes']
+        fail = df[df['decode_success'] == 'No']
+        plt.plot(success['mean_coverage'], success['oligo_recovery(decode)'], 'o-', label='Decoded: Yes', color='green')
     else:
         success_coverage = "N/A. Not decoded successfully"
         success_recovery = "N/A"
-        fail = df[df['decoded_successfully'] == 'No']
+        fail = df[df['decode_success'] == 'No']
 
     
-    # plt.plot(df['mean_coverage'], df['%_oligo_recovery_rate'], marker='o', linestyle='-')
-    plt.plot(fail['mean_coverage'], fail['%_oligo_recovery_rate'], 'o-', label='Decoded: No', color='red')
-    # plt.plot(success['mean_coverage'], success['%_oligo_recovery_rate'], 'o-', label='Decoded: Yes', color='green')
+    # plt.plot(df['mean_coverage'], df['oligo_recovery(decode)'], marker='o', linestyle='-')
+    plt.plot(fail['mean_coverage'], fail['oligo_recovery(decode)'], 'o-', label='Decoded: No', color='red')
+    # plt.plot(success['mean_coverage'], success['oligo_recovery(decode)'], 'o-', label='Decoded: Yes', color='green')
     plt.xlabel('Mean Coverage')
     plt.ylabel('% Oligo Recovery Rate')
-    plt.title('% Oligo Recovery Rate vs Mean Coverage (CRC)')
+    plt.title('% Oligo Recovery Rate vs Mean Coverage (RS)')
 
     # plt.xticks(np.arange(0, 10.5 + 0.5, 0.5))
     # plt.xlim(0, 10.5)
@@ -64,12 +67,11 @@ def plot_recovery_vs_coverage(csv_file):
     plt.grid(True)
     plt.tight_layout()
     # plt.show()
-    plt.savefig("coverage-analysis/seq-depth/visualizations/recovery_vs_coverage/crc"+TIMESTAMP+".png")
+    plt.savefig("coverage-analysis/seq-depth/visualizations/recovery_vs_coverage/crc_a="+str(alpha)+".png")
 
 def plot_oligo_copy_distributions(syn_file, pcr_file, seq_file, save_path=None):
     
     
-        
     syn_df = pd.read_csv(syn_file)
     pcr_df = pd.read_csv(pcr_file)
     seq_df = pd.read_csv(seq_file)
@@ -157,4 +159,4 @@ if __name__ == "__main__":
     #     save_path="coverage-analysis/seq-depth/visualizations/"
     # )
 
-    plot_recovery_vs_coverage("coverage-analysis/seq-depth/files/coverage_metrics_a=0.1.csv")
+    plot_recovery_vs_coverage("coverage-analysis/seq-depth/files/coverage_metrics_crc_a=0.5.csv")
