@@ -25,19 +25,19 @@ def plot_recovery_vs_coverage(csv_file):
         success_recovery = first_success['oligo_recovery(decode)']
         success = df[df['decode_success'] == 'Yes']
         fail = df[df['decode_success'] == 'No']
-        plt.plot(success['mean_coverage'], success['oligo_recovery(decode)'], 'o-', label='Decoded: Yes', color='green')
+        # plt.plot(success['mean_coverage'], success['oligo_recovery(syn)'], 'o-', label='Decoded: Yes', color='green', zorder=3)
+        plt.plot(success['mean_coverage'], success['oligo_recovery(decode)'], 'o-', label='Decoded: Yes', color='green', zorder=3)
     else:
         success_coverage = "N/A. Not decoded successfully"
         success_recovery = "N/A"
         fail = df[df['decode_success'] == 'No']
 
     
-    # plt.plot(df['mean_coverage'], df['oligo_recovery(decode)'], marker='o', linestyle='-')
-    plt.plot(fail['mean_coverage'], fail['oligo_recovery(decode)'], 'o-', label='Decoded: No', color='red')
-    # plt.plot(success['mean_coverage'], success['oligo_recovery(decode)'], 'o-', label='Decoded: Yes', color='green')
+    plt.plot(df['mean_coverage'], df['oligo_recovery(syn)'], 'o-', label='Recovery (Synthesis)', color='blue')
+    plt.plot(df['mean_coverage'], df['oligo_recovery(decode)'], 'o-', label='Recovery (Decode)', color='purple')
     plt.xlabel('Mean Coverage')
-    plt.ylabel('% Oligo Recovery Rate')
-    plt.title('% Oligo Recovery Rate vs Mean Coverage (RS)')
+    plt.ylabel('% Oligo Recovery')
+    plt.title('% Oligo Recovery: Synthesis vs Decode (CRC)')
 
     # plt.xticks(np.arange(0, 10.5 + 0.5, 0.5))
     # plt.xlim(0, 10.5)
@@ -45,6 +45,14 @@ def plot_recovery_vs_coverage(csv_file):
     plt.xlim(0, 11)
     plt.yticks(np.arange(0, 111, 10))
     plt.ylim(40, 110)
+
+    if any(df['decode_success'] == 'Yes'):
+        first_success = df[df['decode_success'] == 'Yes'].iloc[0]
+        success_coverage = first_success['mean_coverage']
+        success_recovery = first_success['oligo_recovery(decode)']
+    else:
+        success_coverage = "N/A"
+        success_recovery = "N/A"
 
     param_text = (
         f'α = {alpha}\n'
@@ -67,7 +75,7 @@ def plot_recovery_vs_coverage(csv_file):
     plt.grid(True)
     plt.tight_layout()
     # plt.show()
-    plt.savefig("coverage-analysis/seq-depth/visualizations/recovery_vs_coverage/crc_a="+str(alpha)+".png")
+    plt.savefig("coverage-analysis/seq-depth/visualizations/recovery_vs_coverage/crc_2_a="+str(alpha)+".png")
 
 def plot_oligo_copy_distributions(syn_file, pcr_file, seq_file, save_path=None):
     
