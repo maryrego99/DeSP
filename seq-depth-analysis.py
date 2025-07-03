@@ -24,23 +24,30 @@ def log_coverage_metrics(input_file, seq_counts_file, total_oligos, params, deco
     percent_seen = 100 * nonzero_oligos/total_oligos if total_oligos > 0 else 0
     dropout_rate = 100 * dropout_oligos/total_oligos if total_oligos > 0 else 0
 
-    print(f"Non zero oligos: {nonzero_oligos}, Dropout oligos: {dropout_oligos}, Total Oligos: {total_oligos}")
+    # decode_recovery_rate = 100 * params.get("crc_pass")/total_oligos if total_oligos > 0 else 0
+    # decode_dropout_rate = 100 * params.get("crc_fail")/total_oligos if total_oligos > 0 else 0
+
+    decode_recovery_rate = 100 * params.get("oligos_used_rs_decode", 0) / total_oligos if total_oligos > 0 else 0
+    decode_dropout_rate = 100 - decode_recovery_rate
+    print(f"Post sequencing - Non zero oligos: {nonzero_oligos}, Dropout oligos: {dropout_oligos}, Total Oligos: {total_oligos}")
 
     row = {
         "input_file": input_file,
         # "file": os.path.basename(seq_counts_file),
-        "alpha": params.get("alpha"),
-        "pcrc": params.get("pcrc"),
-        "pcrp": params.get("pcrp"),
-        "sampling_ratio": params.get("sam_ratio"),
+        "α": params.get("alpha"),
+        # "pcrc": params.get("pcrc"),
+        # "pcrp": params.get("pcrp"),
+        "sam_ratio": params.get("sam_ratio"),
         "subs_rate": params.get("subs_rate"),
         "rs": params.get("rs"),
         "total_oligos": total_oligos,
         "total_reads": total_reads,
         "mean_coverage": round(mean_coverage, 2),
-        "%_oligo_recovery_rate": round(percent_seen, 2),
-        "dropout_rate": round(dropout_rate, 2),
-        "decoded_successfully": "Yes" if decoded_success else "No"
+        "oligo_recovery(seq)": round(percent_seen, 2),
+        "dropout(seq)": round(dropout_rate, 2),
+        "oligo_recovery(decode)": round(decode_recovery_rate, 2),
+        "dropout(decode)": round(decode_dropout_rate, 2),
+        "decode_success": "Yes" if decoded_success else "No"
     }
 
     file_exists = os.path.isfile(out_csv)
@@ -134,6 +141,8 @@ def analyze_oligo_coverage(file_path, alpha, subs_rate=0.003, seq_depth=10):
             print("No chunks recovered; nothing to save.")
             print("Decoding failed.")
     
+    used_oligos = len(g.seen_seeds) 
+    print(f"Post Decoding (RS) Oligos used: {used_oligos}")
     # crc_pass = g.crc_pass
     # crc_fail = g.crc_fail
 
@@ -146,6 +155,9 @@ def analyze_oligo_coverage(file_path, alpha, subs_rate=0.003, seq_depth=10):
         "sam_ratio": arg.sam_ratio,
         "subs_rate": subs_rate,
         "rs": rs,
+        "oligos_used_rs_decode": used_oligos
+        # "crc_pass": crc_pass,
+        # "crc_fail": crc_fail
     }
 
     log_coverage_metrics(
@@ -154,12 +166,13 @@ def analyze_oligo_coverage(file_path, alpha, subs_rate=0.003, seq_depth=10):
         total_oligos=len(in_dnas),
         params=params,
         decoded_success = decoded_success,
-        out_csv="coverage-analysis/seq-depth/files/coverage_metrics_rs_a=.csv"
+        out_csv="coverage-analysis/seq-depth/files/coverage_metrics_rs_a="+str(alpha)+".csv"
     )
 
 
 if __name__ == "__main__":
-    # for i in np.arange(4.5, 14.5, 0.5):
+    # for i in np.arange(0.5, 10.5, 0.5):
     #     for _ in range(3): 
-    #         analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.9, subs_rate=0.0035, seq_depth=i)
-    analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.5, subs_rate=0.0035, seq_depth=12)
+    #         analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.1, subs_rate=0.0035, seq_depth=i)
+    analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.4, subs_rate=0.0035, seq_depth=5)
+

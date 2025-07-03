@@ -9,9 +9,9 @@ def plot_recovery_vs_coverage(csv_file):
     df = pd.read_csv(csv_file) 
 
     df['mean_coverage'] = pd.to_numeric(df['mean_coverage'], errors='coerce')
-    df['oligo_recovery(syn)'] = pd.to_numeric(df['oligo_recovery(syn)'], errors='coerce')
+    df['oligo_recovery(seq)'] = pd.to_numeric(df['oligo_recovery(seq)'], errors='coerce')
     df['oligo_recovery(decode)'] = pd.to_numeric(df['oligo_recovery(decode)'], errors='coerce')
-    df['dropout(syn)'] = pd.to_numeric(df['dropout(syn)'], errors='coerce')
+    df['dropout(seq)'] = pd.to_numeric(df['dropout(seq)'], errors='coerce')
     df['dropout(decode)'] = pd.to_numeric(df['dropout(decode)'], errors='coerce')
 
     alpha = df['α'].iloc[0]
@@ -25,7 +25,7 @@ def plot_recovery_vs_coverage(csv_file):
         success_recovery = first_success['oligo_recovery(decode)']
         success = df[df['decode_success'] == 'Yes']
         fail = df[df['decode_success'] == 'No']
-        # plt.plot(success['mean_coverage'], success['oligo_recovery(syn)'], 'o-', label='Decoded: Yes', color='green', zorder=3)
+        # plt.plot(success['mean_coverage'], success['oligo_recovery(seq)'], 'o-', label='Decoded: Yes', color='green', zorder=3)
         plt.plot(success['mean_coverage'], success['oligo_recovery(decode)'], 'o-', label='Decoded: Yes', color='green', zorder=3)
     else:
         success_coverage = "N/A. Not decoded successfully"
@@ -33,11 +33,11 @@ def plot_recovery_vs_coverage(csv_file):
         fail = df[df['decode_success'] == 'No']
 
     
-    plt.plot(df['mean_coverage'], df['oligo_recovery(syn)'], 'o-', label='Recovery (Synthesis)', color='blue')
+    plt.plot(df['mean_coverage'], df['oligo_recovery(seq)'], 'o-', label='Recovery (Synthesis)', color='blue')
     plt.plot(df['mean_coverage'], df['oligo_recovery(decode)'], 'o-', label='Recovery (Decode)', color='purple')
     plt.xlabel('Mean Coverage')
     plt.ylabel('% Oligo Recovery')
-    plt.title('% Oligo Recovery: Synthesis vs Decode (CRC)')
+    plt.title('% Oligo Recovery: Synthesis vs Decode (RS)')
 
     # plt.xticks(np.arange(0, 10.5 + 0.5, 0.5))
     # plt.xlim(0, 10.5)
@@ -75,7 +75,7 @@ def plot_recovery_vs_coverage(csv_file):
     plt.grid(True)
     plt.tight_layout()
     # plt.show()
-    plt.savefig("coverage-analysis/seq-depth/visualizations/recovery_vs_coverage/crc_2_a="+str(alpha)+".png")
+    plt.savefig("coverage-analysis/seq-depth/visualizations/recovery_vs_coverage/rs_2_a="+str(alpha)+".png")
 
 def plot_oligo_copy_distributions(syn_file, pcr_file, seq_file, save_path=None):
     
@@ -167,4 +167,4 @@ if __name__ == "__main__":
     #     save_path="coverage-analysis/seq-depth/visualizations/"
     # )
 
-    plot_recovery_vs_coverage("coverage-analysis/seq-depth/files/coverage_metrics_crc_a=0.5.csv")
+    plot_recovery_vs_coverage("coverage-analysis/seq-depth/files/coverage_metrics_rs_a=0.1.csv")
