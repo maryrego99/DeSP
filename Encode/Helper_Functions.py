@@ -237,6 +237,11 @@ def dna_to_int_array(dna_str):
     s = ''.join('{0:02b}'.format(QUANT[dna_str[t]]) for t in range(0, len(dna_str),1))
     return [int(s[t:t+8],2) for t in range(0,len(s), 8)]
 
+def int_array_to_dna(int_array):
+    """Convert a list of ints (bytes) back into a DNA string."""
+    byte_data = bytes(int_array)
+    return byte_to_dna(byte_data)
+
 
 #transform a number to qua_len bases
 #example: num_to_dna(6,3) returns 'ACC'

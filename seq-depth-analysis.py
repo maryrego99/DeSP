@@ -60,7 +60,7 @@ def log_coverage_metrics(input_file, seq_counts_file, total_oligos, params, deco
     print(f"Coverage metrics logged to {out_csv}")
 
 def analyze_oligo_coverage(file_path, alpha, subs_rate=0.003, seq_depth=10):
-    rs = 4
+    rs = 0
     chunk_size = 20 # 36 # increase -> lesser oligos
 
     #input file into chunks

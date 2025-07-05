@@ -8,6 +8,8 @@ import math
 import numpy as np
 import zlib
 from collections import defaultdict
+from itertools import combinations
+import binascii
 
 from reedsolo import RSCodec
 from Encode.Helper_Functions import *
@@ -23,8 +25,8 @@ class Droplet:
         self.data = data
         self.seed = seed
         self.num_chunks = set(num_chunks)
-        self.rs = rs
-        self.rs_obj = rs_obj
+        # self.rs = rs
+        # self.rs_obj = rs_obj
         self.degree = degree
 
         self.DNA = None
@@ -59,15 +61,15 @@ class Droplet:
         # message = seed_ord + bytearray(self.data)
 
         
-        if self.rs > 0:
-            message = self.rs_obj.encode(message) #adding RS symbols to the message
+        # if self.rs > 0:
+        #     message = self.rs_obj.encode(message) #adding RS symbols to the message
 
-        return message
+        # return message
 
-        # # use CRC32 instead of RS
-        # crc_val = zlib.crc32(message)
-        # crc_bytes = crc_val.to_bytes(4, byteorder='big')
-        # return message + crc_bytes
+        # use CRC32 instead of RS
+        crc_val = zlib.crc32(message)
+        crc_bytes = crc_val.to_bytes(4, byteorder='big')
+        return message + crc_bytes
     
 #----------------------------------------------------Fountain-------------------------------------------------#      
 class DNAFountain:
@@ -130,10 +132,10 @@ class DNAFountain:
     
     def calc_oligo_length(self):
         #return the number of nucleotides in an oligo:
-        bits = self.chunk_size * 8 + self.lfsr_l + self.rs * 8
-        return bits/4
-        # bits = self.chunk_size * 8 + self.lfsr_l + 32  # CRC-32 = 4 bytes = 32 bits
-        # return bits / 4
+        # bits = self.chunk_size * 8 + self.lfsr_l + self.rs * 8
+        # return bits/4
+        bits = self.chunk_size * 8 + self.lfsr_l + 32  # CRC-32 = 4 bytes = 32 bits
+        return bits / 4
 
 
     def calc_stop(self):
@@ -241,39 +243,39 @@ class Glass:
 
         self.PRNG = PRNG(K = self.num_chunks, delta = delta, c = c_dist, np = np)
 
-        self.rs = rs
-        self.RSCodec = None
+        # self.rs = rs
+        # self.RSCodec = None
         self.correct = flag_correct
         self.seen_seeds = set()
         
-        if self.rs > 0:
-            self.RSCodec = RSCodec(rs)
+        # if self.rs > 0:
+        #     self.RSCodec = RSCodec(rs)
     
     def add_dna(self, dna_string):
         # transfer data to int
         data = dna_to_int_array(dna_string)
          
-        # try error correcting, if rs code is added and we want to correct error
-        if self.rs > 0:
-            if self.correct: 
-                flag, data_corrected = rs_decode(data, self.RSCodec)
-                if flag == -1:
-                    return -1, None
-            else: #if we don't want to evaluate the error correcting code, just delete the rs code
-                data_corrected  = data[0:len(data) - self.rs] 
-        else:
-            data_corrected = data
+        # # try error correcting, if rs code is added and we want to correct error
+        # if self.rs > 0:
+        #     if self.correct: 
+        #         flag, data_corrected = rs_decode(data, self.RSCodec)
+        #         if flag == -1:
+        #             return -1, None
+        #     else: #if we don't want to evaluate the error correcting code, just delete the rs code
+        #         data_corrected  = data[0:len(data) - self.rs] 
+        # else:
+        #     data_corrected = data
 
-        # # Separate CRC
-        # received_crc = int.from_bytes(data[-4:], byteorder='big')
-        # data_wo_crc = data[:-4]
+        # Separate CRC
+        received_crc = int.from_bytes(data[-4:], byteorder='big')
+        data_wo_crc = data[:-4]
 
-        # # Verify CRC
-        # calc_crc = zlib.crc32(bytes(data_wo_crc))
-        # if calc_crc != received_crc:
-        #     return -1, None
+        # Verify CRC
+        calc_crc = zlib.crc32(bytes(data_wo_crc))
+        if calc_crc != received_crc:
+            return -1, None
 
-        # data_corrected = data_wo_crc
+        data_corrected = data_wo_crc
         
         # split seed and payload
         seed_array = data_corrected[:self.header_size]
@@ -413,67 +415,124 @@ class Glass:
             print("Partial output does not contain a valid image header — not saved.")
             print("Decoding failed.")
 
+    def flip_bit(self, bitstring, index):
+        flipped = list(bitstring)
+        flipped[index] = '1' if flipped[index] == '0' else '0'
+        return ''.join(flipped)
+
+    def bytes_to_bitstring(self,b):
+        return ''.join(f'{byte:08b}' for byte in b)
+
+    def bitstring_to_bytes(self,s):
+        return int(s, 2).to_bytes(len(s) // 8, byteorder='big')
+
+    def crc32_check(self,data_bytes):
+        return binascii.crc32(data_bytes).to_bytes(4, byteorder='big')
+
+    def is_valid_crc(self, received_bytes):
+        data, received_crc = received_bytes[:-4], received_bytes[-4:]
+        return self.crc32_check(data) == received_crc
+
+    def grand_crc_repair(self, dna_string, max_flips=2):
+        byte_data = bytes(dna_to_int_array(dna_string))
+        bitstring = self.bytes_to_bitstring(byte_data)
+        length = len(bitstring)
+
+        for num_flips in range(1, max_flips + 1):
+            for indices in combinations(range(length), num_flips):
+                guess = bitstring
+                for idx in indices:
+                    guess = self.flip_bit(guess, idx)
+                guess_bytes = self.bitstring_to_bytes(guess)
+                if self.is_valid_crc(guess_bytes):
+                    repaired = list(guess_bytes)
+                    # print("Correct guess and repaired. Converting to DNA")
+                    return int_array_to_dna(repaired)
+            # print("Grand did not repair")
+        return None
+
     def decode(self):
-        f = open(self.in_file_name,'r')
+        f = open(self.in_file_name, 'r')
         line = 0
         errors = 0
         solve_num = []
+        crc_pass = 0
+        crc_fail = 0
+        self.valid_droplets = []
+        repaired_strands = []
+        attempted_grand = []
+
         while True:
-            #read line
-            try:     
+            try:
                 dna = f.readline().rstrip('\n')
             except:
-                logging.info("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes", line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed())
-                logging.info("Finished reading input file!")
-                # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
-                # print('Finished reading input file!')
+                print(f"CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads from synthesis: {line}")
                 return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen, self.chunks
+
             if len(dna) == 0:
-                logging.info("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes", line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed())
-                logging.info("Finished reading input file!")
-                # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
-                # print("Finished reading input file. Failed to decode!")
+                print(f"CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads from synthesis: {line}")
+                usable_ratio = crc_pass / (crc_pass + crc_fail)
+                print(f"Usable droplet ratio: {usable_ratio:.2%}")
+                print(f"Repaired {len(repaired_strands)} strands using GRAND")
+                print(f"Valid Droplets: {len(self.valid_droplets)}")
                 return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen, self.chunks
+
             line += 1
-            
             seed, data = self.add_dna(dna)
+
             if seed == -1:
-                errors += 1
+                attempted_grand.append((seed, data))
+                repaired_dna = self.grand_crc_repair(dna, max_flips=2)
+                if repaired_dna:
+                    # repaired_strands.append(repaired_dna)
+                    seed, data = self.add_dna(repaired_dna)
+                    if seed == -1:
+                        errors += 1
+                        crc_fail += 1
+                    else:
+                        crc_pass += 1
+                        self.valid_droplets.append((seed, data))
+                        repaired_strands.append(repaired_dna)
+                else:
+                    errors += 1
+                    crc_fail += 1
+            else:
+                crc_pass += 1
+                self.valid_droplets.append((seed, data))
+            
+            # seed, data = self.add_dna(dna)
+            # if seed == -1:
+            #     errors += 1
+            #     crc_fail += 1  # CRC failed
+            # else:
+            #     crc_pass += 1  # CRC passed
+            #     self.valid_droplets.append((seed, data))
 
+            self.crc_pass = crc_pass
+            self.crc_fail = crc_fail
 
-            #logging
             if line % 200 == 0:
-                logging.info("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes", line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed())
-                # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
                 pass
 
-            # Track coverage — number of unique oligos seen so far
             if line == 1:
                 chunk_seen = [0] * self.num_chunks
                 coverage_vs_reads = []
 
-            # Access droplet to get the chunks it covers
             if seed != -1:
                 self.PRNG.set_seed(seed)
                 blockseed, d, ix_samples = self.PRNG.get_src_blocks_wrap()
-
                 for chunk_id in ix_samples:
                     chunk_seen[chunk_id] = 1
-
                 coverage_vs_reads.append(sum(chunk_seen))
-                # print(f"Chunk seen: {chunk_seen}")
             solve_num.append(self.chunksDone())
 
             if self.isDone():
-                logging.info("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes", line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed())
-                logging.info("Done!")
-                self.used_oligos = self.seen_seeds
-                print("Saving valid droplets post RS check at coverage-analysis/seq-depth/files/rs_valid_droplets.txt")
-                with open("coverage-analysis/seq-depth/files/rs_valid_droplets.txt", "w") as out_f:
-                    for seed in self.used_oligos:
-                        out_f.write(f"{seed}\n")
-                # print("After reading %d lines, %d chunks are done. So far: %d rejections (%f) %d barcodes" % (line, self.chunksDone(), errors, errors/(line+0.0), self.len_seen_seed()))
-                # print('done!')
+                print(f"CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads from synthesis: {line}")
+                usable_ratio = crc_pass / (crc_pass + crc_fail)
+                print(f"Usable droplet ratio: {usable_ratio:.2%}")
+                print(f"Attempted GRAND on strands: {len(attempted_grand)}")
+                print(f"Repaired strands using GRAND: {len(repaired_strands)}")
+                print(f"Valid Droplets: {len(self.valid_droplets)}")
                 f.close()
                 return 0, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen, self.chunks
 
