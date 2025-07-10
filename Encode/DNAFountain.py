@@ -32,7 +32,7 @@ class Droplet:
         self.DNA = None
     
     def toDNA(self, flag = None):
-        #this function wraps the seed, data payload, and Reed Solomon.
+        #this function wraps the seed, data payload, and Reed Solomon (or CRC).
         if self.DNA is not None:
             return self.DNA
         self.DNA = byte_to_dna(self._package())
@@ -66,6 +66,7 @@ class Droplet:
 
         # return message
 
+        # encode with crc32
         # use CRC32 instead of RS
         crc_val = zlib.crc32(message)
         crc_bytes = crc_val.to_bytes(4, byteorder='big')
@@ -458,29 +459,46 @@ class Glass:
         solve_num = []
         crc_pass = 0
         crc_fail = 0
+        grand_pass = 0
+        grand_fail = 0
         self.valid_droplets = []
         repaired_strands = []
         attempted_grand = []
+
+        chunk_seen = [0] * self.num_chunks
+        coverage_vs_reads = []
 
         while True:
             try:
                 dna = f.readline().rstrip('\n')
             except:
-                print(f"CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads from synthesis: {line}")
+                print(f"Originally CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads from synthesis: {line}")
+                # usable_ratio = crc_pass / (crc_pass + crc_fail)
+                # print(f"Usable droplet ratio: {usable_ratio:.2%}")
+                print(f"Attempted GRAND on strands: {len(attempted_grand)}")
+                print(f"Repaired strands using GRAND: {len(repaired_strands)}")
+                print(f"GRAND Pass: {grand_pass}, GRAND Fail: {grand_fail}")
+                print(f"GRAND Success Rate: {grand_pass/(grand_pass+grand_fail)*100}")
                 return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen, self.chunks
 
             if len(dna) == 0:
-                print(f"CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads from synthesis: {line}")
-                usable_ratio = crc_pass / (crc_pass + crc_fail)
-                print(f"Usable droplet ratio: {usable_ratio:.2%}")
-                print(f"Repaired {len(repaired_strands)} strands using GRAND")
+                print(f"Originally CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads from synthesis: {line}")
+                # usable_ratio = crc_pass / (crc_pass + crc_fail)
+                # print(f"Usable droplet ratio: {usable_ratio:.2%}")
+                print(f"Attempted GRAND on strands: {len(attempted_grand)}")
+                print(f"Repaired strands using GRAND: {len(repaired_strands)}")
+                print(f"GRAND Pass: {grand_pass}, GRAND Fail: {grand_fail}")
+                print(f"GRAND Success Rate: {grand_pass/(grand_pass+grand_fail)*100}")
+                # print(repaired_strands)
                 print(f"Valid Droplets: {len(self.valid_droplets)}")
+                self.recovered_droplets = len(self.valid_droplets)
                 return -1, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen, self.chunks
 
             line += 1
             seed, data = self.add_dna(dna)
 
             if seed == -1:
+                crc_fail += 1
                 attempted_grand.append((seed, data))
                 repaired_dna = self.grand_crc_repair(dna, max_flips=2)
                 if repaired_dna:
@@ -488,14 +506,14 @@ class Glass:
                     seed, data = self.add_dna(repaired_dna)
                     if seed == -1:
                         errors += 1
-                        crc_fail += 1
+                        grand_fail += 1
                     else:
-                        crc_pass += 1
+                        grand_pass += 1
                         self.valid_droplets.append((seed, data))
                         repaired_strands.append(repaired_dna)
                 else:
                     errors += 1
-                    crc_fail += 1
+                    grand_fail += 1
             else:
                 crc_pass += 1
                 self.valid_droplets.append((seed, data))
@@ -511,28 +529,37 @@ class Glass:
             self.crc_pass = crc_pass
             self.crc_fail = crc_fail
 
+            self.grand_pass = grand_pass
+            self.grand_fail = grand_fail
+            
+
             if line % 200 == 0:
                 pass
 
-            if line == 1:
-                chunk_seen = [0] * self.num_chunks
-                coverage_vs_reads = []
+            # if line == 1:
+            #     chunk_seen = [0] * self.num_chunks
+            #     coverage_vs_reads = []
 
             if seed != -1:
                 self.PRNG.set_seed(seed)
-                blockseed, d, ix_samples = self.PRNG.get_src_blocks_wrap()
-                for chunk_id in ix_samples:
-                    chunk_seen[chunk_id] = 1
+                # blockseed, d, ix_samples = self.PRNG.get_src_blocks_wrap()
+                # for chunk_id in ix_samples:
+                #     chunk_seen[chunk_id] = 1
+                chunk_seen = [1 if i in self.done_segments else 0 for i in range(self.num_chunks)]
                 coverage_vs_reads.append(sum(chunk_seen))
             solve_num.append(self.chunksDone())
 
             if self.isDone():
-                print(f"CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads from synthesis: {line}")
-                usable_ratio = crc_pass / (crc_pass + crc_fail)
-                print(f"Usable droplet ratio: {usable_ratio:.2%}")
+                print(f"Originally CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads from synthesis: {line}")
+                # usable_ratio = crc_pass / (crc_pass + crc_fail)
+                # print(f"Usable droplet ratio: {usable_ratio:.2%}")
                 print(f"Attempted GRAND on strands: {len(attempted_grand)}")
                 print(f"Repaired strands using GRAND: {len(repaired_strands)}")
+                print(f"GRAND Pass: {grand_pass}, GRAND Fail: {grand_fail}")
+                print(f"GRAND Success Rate: {grand_pass/(grand_pass+grand_fail)*100}")
                 print(f"Valid Droplets: {len(self.valid_droplets)}")
+                self.recovered_droplets = len(self.valid_droplets)
+                print(f"Chunks seen:")
                 f.close()
                 return 0, solve_num, line, self.chunksDone(), errors, coverage_vs_reads, chunk_seen, self.chunks
 

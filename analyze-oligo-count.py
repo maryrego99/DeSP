@@ -77,6 +77,76 @@ def plot_recovery_vs_coverage(csv_file):
     # plt.show()
     plt.savefig("coverage-analysis/seq-depth/visualizations/recovery_vs_coverage/rs_2_a="+str(alpha)+".png")
 
+def plot_dropout_vs_coverage(csv_file):
+    df = pd.read_csv(csv_file) 
+
+    df['mean_coverage'] = pd.to_numeric(df['mean_coverage'], errors='coerce')
+    df['dropout(seq)'] = pd.to_numeric(df['dropout(seq)'], errors='coerce')
+    df['dropout(decode)'] = pd.to_numeric(df['dropout(decode)'], errors='coerce')
+    df['dropout(seq)'] = pd.to_numeric(df['dropout(seq)'], errors='coerce')
+    df['dropout(decode)'] = pd.to_numeric(df['dropout(decode)'], errors='coerce')
+
+    df = df.sort_values(by='mean_coverage')
+
+    group_size = 3
+    smoothed_rows = []
+    for i in range(0, len(df) - group_size + 1, group_size):
+        group = df.iloc[i:i+group_size]
+        success_count = (group['decode_success'] == 'Yes').sum()
+        decode_success = 'Yes' if success_count >= 2 else 'No'
+        smoothed_rows.append({
+            'mean_coverage': group['mean_coverage'].mean(),
+            'dropout_seq': group['dropout(seq)'].mean(),
+            'dropout_decode': group['dropout(decode)'].mean(),
+            'decode_success': decode_success
+        })
+    smoothed_df = pd.DataFrame(smoothed_rows)
+
+
+    alpha = df['α'].iloc[0]
+    subs_rate = df['subs_rate'].iloc[0]
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(smoothed_df['mean_coverage'], smoothed_df['dropout_seq'], label='Dropout (seq)', marker='o', color='blue')
+    plt.plot(smoothed_df['mean_coverage'], smoothed_df['dropout_decode'], label='Dropout (decode)', marker='x', color='purple')
+
+    for i in range(1, len(smoothed_df)):
+        x_vals = smoothed_df['mean_coverage'].iloc[i-1:i+1]
+        y_vals = smoothed_df['dropout_decode'].iloc[i-1:i+1]
+        color = 'green' if smoothed_df['decode_success'].iloc[i] == 'Yes' else 'purple'
+        plt.plot(x_vals, y_vals, marker='x', color=color)
+
+    param_text = (
+        f'α = {alpha}\n'
+        f'Substitution Error Rate = {subs_rate}\n'
+        f'First successful decode:\n'
+        # f'  Coverage ≈ {success_coverage:.2f}\n'
+        # f'  Recovery ≈ {success_recovery:.2f}%'
+    )
+
+    plt.xlabel('Mean Coverage')
+    plt.ylabel('% Oligo Dropout')
+    plt.title('% Oligo Dropout: Synthesis vs Decode (RS)')
+
+    plt.xticks(np.arange(0, 11, 1))
+    plt.xlim(0, 11)
+    plt.yticks(np.arange(0, 111, 10))
+    plt.ylim(0, 110)
+
+    plt.gca().text(
+        0.70, 0.25, param_text,
+        transform=plt.gca().transAxes,
+        fontsize=10,
+        verticalalignment='top',
+        bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray')
+    )
+
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    # plt.show()
+    plt.savefig("coverage-analysis/seq-depth/visualizations/dropout_vs_coverage/rs_2_a="+str(alpha)+".png")
+
 def plot_oligo_copy_distributions(syn_file, pcr_file, seq_file, save_path=None):
     
     
@@ -167,4 +237,5 @@ if __name__ == "__main__":
     #     save_path="coverage-analysis/seq-depth/visualizations/"
     # )
 
-    plot_recovery_vs_coverage("coverage-analysis/seq-depth/files/coverage_metrics_rs_a=0.1.csv")
+    # plot_recovery_vs_coverage("coverage-analysis/seq-depth/files/coverage_metrics_rs_a=0.1.csv")
+    plot_dropout_vs_coverage("coverage-analysis/seq-depth/files/coverage_metrics_rs_a=0.9.csv")
