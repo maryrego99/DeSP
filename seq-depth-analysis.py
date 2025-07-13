@@ -1,5 +1,6 @@
 import os
 import csv
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import Counter
@@ -94,6 +95,57 @@ def log_coverage_metrics(input_file, seq_counts_file, total_oligos, params, deco
 
     print(f"Coverage metrics logged to {out_csv}")
 
+def log_grand_coverage_metrics(input_file, seq_counts_file, total_oligos, params, decoded_success, 
+                               grand_pass, grand_fail, grand_success, chunks_recovered, total_chunks, data_recovered,
+                               decode_time, out_csv="coverage_metrics.csv"):
+    
+    with open(seq_counts_file, "r") as f:
+        next(f)  #exclude the header
+        counts = [int(line.strip().split(",")[1]) for line in f]
+
+    total_reads = sum(counts)
+    nonzero_oligos = sum(1 for c in counts if c > 0)
+    dropout_oligos = sum(1 for c in counts if c == 0)
+
+    mean_coverage = total_reads/total_oligos if total_oligos > 0 else 0
+    percent_seen = 100 * nonzero_oligos/total_oligos if total_oligos > 0 else 0
+    dropout_rate = 100 * dropout_oligos/total_oligos if total_oligos > 0 else 0
+
+    decode_recovery_rate = 100 * params.get("oligos_used_rs_decode", 0) / total_oligos if total_oligos > 0 else 0
+    decode_dropout_rate = 100 - decode_recovery_rate
+
+    row = {
+        "input_file": input_file,
+        "α": params.get("alpha"),
+        "sam_ratio": params.get("sam_ratio"),
+        "subs_rate": params.get("subs_rate"),
+        "rs": params.get("rs"),
+        "total_oligos": total_oligos,
+        "total_reads": total_reads,
+        "mean_coverage": round(mean_coverage, 2),
+        "oligo_recovery(seq)": round(percent_seen, 2),
+        "dropout(seq)": round(dropout_rate, 2),
+        "oligo_recovery(decode)": round(decode_recovery_rate, 2),
+        "dropout(decode)": round(decode_dropout_rate, 2),
+        "GRAND_pass_oligos": round(grand_pass, 2),
+        "GRAND_fail_oligos": round(grand_fail, 2),
+        "GRAND_success_rate": round(grand_success, 2),
+        "chunks_recovered": round(chunks_recovered, 2),
+        "total_chunks": round(total_chunks, 2),
+        "data_recovery": round(data_recovered, 2),
+        "decode_success": "Yes" if decoded_success else "No",
+        "decode_time": round(decode_time, 2)
+    }
+
+    file_exists = os.path.isfile(out_csv)
+    with open(out_csv, "a", newline="") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=row.keys())
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(row)
+
+    print(f"Coverage metrics logged to {out_csv}")
+
 def analyze_oligo_coverage(file_path, alpha, subs_rate=0.003, seq_depth=10):
     rs = 0
     chunk_size = 20 # 36 # increase -> lesser oligos
@@ -164,8 +216,11 @@ def analyze_oligo_coverage(file_path, alpha, subs_rate=0.003, seq_depth=10):
 
     #Decoding
     print('Trying to decode from sequencing readouts.')
+    start_decode_time = time.time()
     g = Glass(noisy_dna_file, chunk_num=N, rs=rs)
     ret, _, total_reads, chunks_done, errors, coverage_vs_reads, chunk_seen, chunks = g.decode()
+    decode_time = time.time() - start_decode_time
+    print(f"Decoding time: {decode_time}")
     decoded_file = f"{file_path}_decoded.jpg"
     if ret ==0:
         print("Decoding successful")
@@ -180,7 +235,7 @@ def analyze_oligo_coverage(file_path, alpha, subs_rate=0.003, seq_depth=10):
     used_oligos = len(g.seen_seeds) 
 
     recovered_oligo_ratio = g.recovered_droplets/oligos_generated * 100
-    print(f"% Recovered Droplets(Oligos): {recovered_oligo_ratio}")
+    print(f"% Recovered Droplets(Oligos): {recovered_oligo_ratio:.2f}")
 
     # print(f"Post Decoding (RS) Oligos used: {used_oligos}")
     # crc_pass = g.crc_pass
@@ -200,20 +255,36 @@ def analyze_oligo_coverage(file_path, alpha, subs_rate=0.003, seq_depth=10):
         # "crc_fail": crc_fail
     }
 
-    log_coverage_metrics(
+    # log_coverage_metrics(
+    #     input_file = file_path.split("files/")[-1],
+    #     seq_counts_file="coverage-analysis/seq-depth/files/seq_copy_counts.csv",
+    #     total_oligos=len(in_dnas),
+    #     params=params,
+    #     decoded_success = decoded_success,
+    #     out_csv="coverage-analysis/seq-depth/files/oligo_recovery/coverage_metrics_crc_a="+str(alpha)+".csv"
+    # )
+
+    log_grand_coverage_metrics(
         input_file = file_path.split("files/")[-1],
         seq_counts_file="coverage-analysis/seq-depth/files/seq_copy_counts.csv",
         total_oligos=len(in_dnas),
         params=params,
         decoded_success = decoded_success,
-        out_csv="coverage-analysis/seq-depth/files/oligo_recovery/coverage_metrics_rs_a="+str(alpha)+".csv"
+        grand_pass = g.grand_pass,
+        grand_fail = g.grand_fail,
+        grand_success = (g.grand_pass/(g.grand_pass+g.grand_fail)*100),
+        chunks_recovered = sum(chunk_seen),
+        total_chunks = len(chunk_seen),
+        data_recovered = (sum(chunk_seen)/len(chunk_seen)*100),
+        decode_time = decode_time,
+        out_csv="coverage-analysis/seq-depth/files/oligo_recovery/coverage_metrics_grand_crc_a="+str(alpha)+".csv"
     )
 
     log_data_recovery_metrics(
         file_path = file_path.split("files/")[-1],
         total_chunks = N,
         recovered_chunks = chunks_done,
-        out_csv = "coverage-analysis/seq-depth/files/data_recovery_rs_a=" + str(alpha) + ".csv"
+        out_csv = "coverage-analysis/seq-depth/files/data_recovery_crc_a=" + str(alpha) + ".csv"
     )
 
     print(f"Chunks seen: {chunk_seen}")
@@ -228,6 +299,6 @@ def analyze_oligo_coverage(file_path, alpha, subs_rate=0.003, seq_depth=10):
 if __name__ == "__main__":
     # for i in np.arange(0.5, 10.5, 0.5):
     #     for _ in range(3): 
-    #         analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.1, subs_rate=0.0035, seq_depth=i)
-    analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.4, subs_rate=0.0035, seq_depth=3.1)
+    #         analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.5, subs_rate=0.0035, seq_depth=i)
+    analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.5, subs_rate=0.0035, seq_depth=2)
 
