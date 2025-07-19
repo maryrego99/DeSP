@@ -1,10 +1,13 @@
 from Encode.Helper_Functions import dna_to_int_array, rs_decode, preprocess, load_dna
 from Analysis.Analysis import dna_chunk, save_simu_result,  error_distribution
-from Encode.DNAFountain import DNAFountain, Glass
+# from Encode.DNAFountain import DNAFountain, Glass
+from DNAFountain.Fountain import DNAFountain
+from DNAFountain.Glass import Glass
 import numpy as np
 from scipy.stats import gumbel_r, poisson
 import matplotlib.pyplot as plt
 import seaborn as sns
+from ECC.ecc_encoders import crc32_encoder, make_rs_encoder, no_encoder
 
 def error_profile(out_dnas, rs = 2):
     lost_num = 0
@@ -62,7 +65,11 @@ class FT_Analyzer:
         self.coverage = round(1 + self.alpha, 2)
 
     def encode(self):
-        self.f = DNAFountain(self.data, self.alpha, rs = self.rs_length)
+        #choose encoder
+        # encoder = no_encoder
+        # encoder = make_rs_encoder(rs_len=4)
+        encoder = crc32_encoder
+        self.f = DNAFountain(self.data, self.alpha, ecc_encoder=encoder)
         good, tries = self.f.encode()
         self.good = good
         self.coverage = round(1 + self.alpha, 2) 

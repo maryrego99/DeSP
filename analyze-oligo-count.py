@@ -145,7 +145,7 @@ def plot_dropout_vs_coverage(csv_file):
     plt.grid(True)
     plt.tight_layout()
     # plt.show()
-    plt.savefig("coverage-analysis/seq-depth/visualizations/dropout_vs_coverage/rs_2_a="+str(alpha)+".png")
+    plt.savefig("coverage-analysis/seq-depth/visualizations/dropout_vs_coverage/crc_a="+str(alpha)+".png")
 
 def plot_oligo_copy_distributions(syn_file, pcr_file, seq_file, save_path=None):
     
@@ -238,4 +238,5 @@ if __name__ == "__main__":
     # )
 
     # plot_recovery_vs_coverage("coverage-analysis/seq-depth/files/coverage_metrics_rs_a=0.1.csv")
-    plot_dropout_vs_coverage("coverage-analysis/seq-depth/files/coverage_metrics_rs_a=0.9.csv")
+    input_csv = "coverage-analysis/seq-depth/files/oligo_recovery/coverage_metrics_crc_a=0.9.csv"
+    plot_dropout_vs_coverage(input_csv)
