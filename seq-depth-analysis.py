@@ -144,7 +144,7 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
         "none": NoECCDecoder(),
         "rs": ReedSolomonDecoder(rs_len=4),
         "crc": CRCDecoder(),
-        "crc_grand": CRCGrandDecoder(max_flips=1)
+        "crc_grand": CRCGrandDecoder(max_flips=2)
     }
     encoder_map = {
         "none": no_encoder,
@@ -296,9 +296,9 @@ if __name__ == "__main__":
             analyze_oligo_coverage(
                 "coverage-analysis/seq-depth/files/lena.jpg",
                 alpha=0.5,
-                ecc_type="crc_grand",
+                ecc_type="crc",
                 subs_rate=0.0035,
                 seq_depth=i
             )
 
-    # analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.6, ecc_type="crc", subs_rate=0.0035, seq_depth=2)
+    # analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.5, ecc_type="crc_grand", subs_rate=0.0035, seq_depth=0.5)

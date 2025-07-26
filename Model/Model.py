@@ -248,14 +248,37 @@ class ErrorAdder:
         self.probD = probD
         self.probI = probI
 
-    def genNewError(self,dna):
+    def genNewError(self, dna):
         Errors = []
-        for i,base in enumerate(['A','C','G','T']):
-            Pi = np.where(dna==base)[0]
-            subi = np.random.choice(['A','C','G','T'],size = Pi.size, p = self.TM[i])
-            subPi = np.where(subi != base)[0]
-            for pos in subPi:
-                Errors.append((Pi[pos],'s', subi[pos]))
+        dna = np.array(dna)
+        dna_len = len(dna)
+
+        # reliability low at 5′ and 3′ ends, high in center
+        positions = np.arange(dna_len)
+        pos_reliability = 1.0 - ((positions - dna_len/2) / (dna_len/2))**2 * 0.8 
+        pos_reliability = np.clip(pos_reliability, 0.1, 1.0)
+        pos_error_probs = 1.0 - pos_reliability
+
+        base_to_idx = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+        bases = ['A', 'C', 'G', 'T']
+
+        for i in range(dna_len):
+            base = dna[i]
+            base_idx = base_to_idx[base]
+
+            tm_row = np.array(self.TM[base_idx])
+            scaled_tm = tm_row * pos_error_probs[i]
+
+            scaled_tm[base_idx] = 1.0 - pos_error_probs[i]
+
+            # normalize
+            scaled_tm /= scaled_tm.sum()
+
+            sampled = np.random.choice(bases, p=scaled_tm)
+            if sampled != base:
+                Errors.append((i, 's', sampled))
+
+        # indels
         delP = np.where(np.random.choice([False,True],size = len(dna), p = [1-self.probD,self.probD]))[0]
         insP = np.where(np.random.choice([False,True],size = len(dna), p = [1-self.probI,self.probI]))[0]
         Errors += ([(pos,'-',dna[pos]) for pos in delP] + [(pos,'+',np.random.choice(['A','T','C','G'])) for pos in insP])

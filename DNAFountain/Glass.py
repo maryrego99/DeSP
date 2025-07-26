@@ -178,7 +178,7 @@ class Glass:
             for c in self.chunks:
                 f.write(bytes(c))
 #             logging.info('saved')
-            print('saved')
+            print('Decoding Successful. Image saved')
             f.close()
         
     def binString(self):
@@ -278,7 +278,8 @@ class Glass:
                 if seed == -1:
                     crc_fail += 1
                     attempted_grand.append((seed, data))
-                    repaired_dna = grand_crc_repair(dna, max_flips=2)
+                    # repaired_dna = grand_crc_repair(dna, max_flips=2)
+                    repaired_dna = heuristic_grand_crc_repair(dna, max_flips=2)
                     if repaired_dna:
                         # repaired_strands.append(repaired_dna)
                         seed, data = self.add_dna(repaired_dna)

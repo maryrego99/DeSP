@@ -37,6 +37,8 @@ def get_ecc_label(filename):
         return "CRC-Grand"
     elif "crc" in filename.lower():
         return "CRC"
+    elif "optimized_grand" in filename.lower():
+        return "Optimized-GRAND"
     elif "rs" in filename.lower():
         return "RS"
     return "Unknown"
