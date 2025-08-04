@@ -12,6 +12,7 @@ from ECC.RSDecoder import ReedSolomonDecoder
 from ECC.CRCDecoder import CRCDecoder
 from ECC.CRCGrandDecoder import CRCGrandDecoder
 from ECC.ecc_encoders import crc32_encoder, make_rs_encoder, no_encoder
+from Model.config import TM_NGS, TM_NNP
 
 #----------------------------------------------------Glass-------------------------------------------------#        
 class Glass:
@@ -51,7 +52,7 @@ class Glass:
         data = dna_to_int_array(dna_string)
          
         if isinstance(self.ecc_decoder, CRCGrandDecoder):
-            #GRAND uses CRC decoder first
+            #GRAND uses CRC decoder itself for check
             crc_decoder = CRCDecoder()
             flag, data_corrected = crc_decoder.decode(data, original_dna=dna_string)
         else:
@@ -260,7 +261,7 @@ class Glass:
                 )
 
             line += 1
-            seed, data = self.add_dna(dna)
+            seed, data = self.add_dna(dna) # first CRC check
 
             if isinstance(self.ecc_decoder, ReedSolomonDecoder):
                 if seed == -1:
@@ -276,14 +277,17 @@ class Glass:
 
             if isinstance(self.ecc_decoder, CRCGrandDecoder):
                 if seed == -1:
+                    # first CRC check failed
                     crc_fail += 1
                     attempted_grand.append((seed, data))
                     # repaired_dna = grand_crc_repair(dna, max_flips=2)
-                    repaired_dna = heuristic_grand_crc_repair(dna, max_flips=2)
+                    # repaired_dna = heuristic_grand_crc_repair(dna, max_flips=2)
+                    repaired_dna = basewise_grand_crc_repair(dna, TM_NGS, max_flips=2, top_k_bases=20) # earlier top k - 10
                     if repaired_dna:
                         # repaired_strands.append(repaired_dna)
-                        seed, data = self.add_dna(repaired_dna)
+                        seed, data = self.add_dna(repaired_dna) # second crc check after repair
                         if seed == -1:
+                            # if second failed too (after repair)
                             errors += 1
                             grand_fail += 1
                         else:
