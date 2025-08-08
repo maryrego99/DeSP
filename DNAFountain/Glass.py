@@ -1,5 +1,6 @@
 import zlib
 import binascii
+import matplotlib.pyplot as plt
 from collections import defaultdict
 from itertools import combinations
 from Encode.Helper_Functions import *
@@ -13,6 +14,8 @@ from ECC.CRCDecoder import CRCDecoder
 from ECC.CRCGrandDecoder import CRCGrandDecoder
 from ECC.ecc_encoders import crc32_encoder, make_rs_encoder, no_encoder
 from Model.config import TM_NGS, TM_NNP
+from collections import Counter
+from DNAFountain.CRCHandler import heuristic_grand_crc_repair
 
 #----------------------------------------------------Glass-------------------------------------------------#        
 class Glass:
@@ -207,11 +210,45 @@ class Glass:
                 not_none.append(i)
         return not_none
 
+
+    def log_error_profile(self, counter, label, output_path):
+        if counter is None or not counter:
+            return
+
+        print(f"\nTop {label} positions flipped in successful GRAND repairs:")
+        print(counter.most_common(10))
+
+        positions = sorted(counter.keys())
+        frequencies = [counter[pos] for pos in positions]
+
+        plt.figure(figsize=(12, 5))
+        plt.bar(positions, frequencies)
+        plt.xlabel(f"{label.capitalize()} Position")
+        plt.ylabel("Frequency in Successful GRAND Repairs")
+        plt.title(f"Position-Based Error Profile ({label.capitalize()} Level)")
+        plt.tight_layout()
+        plt.savefig(output_path)
+        plt.close()
     
     
     def finalize_decoding(self, line, solve_num, errors, coverage_vs_reads, chunk_seen,
                        crc_pass, crc_fail, grand_pass, grand_fail,
-                       repaired_strands, attempted_grand):
+                       repaired_strands, attempted_grand,error_bit_position_counter=None, error_base_position_counter=None):
+        
+        if error_bit_position_counter is not None:
+            self.log_error_profile(
+                counter=error_bit_position_counter,
+                label="bit",
+                output_path="coverage-analysis/seq-depth/visualizations/error-profile/bit-error-profile.png"
+            )
+
+        if error_base_position_counter is not None:
+            self.log_error_profile(
+            counter=error_base_position_counter,
+            label="base",
+            output_path="coverage-analysis/seq-depth/visualizations/error-profile/base-error-profile.png"
+        )
+
         print(f"Originally CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads from synthesis: {line}")
         # usable_ratio = crc_pass / (crc_pass + crc_fail)
         # print(f"Usable droplet ratio: {usable_ratio:.2%}")
@@ -243,6 +280,9 @@ class Glass:
         chunk_seen = [0] * self.num_chunks
         coverage_vs_reads = []
 
+        error_bit_position_counter = Counter()
+        error_base_position_counter = Counter()
+
         while True:
             try:
                 dna = f.readline().rstrip('\n')
@@ -250,14 +290,14 @@ class Glass:
                 return self.finalize_decoding(
                     line, solve_num, errors, coverage_vs_reads, chunk_seen,
                     crc_pass, crc_fail, grand_pass, grand_fail,
-                    repaired_strands, attempted_grand
+                    repaired_strands, attempted_grand, error_bit_position_counter, error_base_position_counter
                 )
 
             if len(dna) == 0:
                 return self.finalize_decoding(
                     line, solve_num, errors, coverage_vs_reads, chunk_seen,
                     crc_pass, crc_fail, grand_pass, grand_fail,
-                    repaired_strands, attempted_grand
+                    repaired_strands, attempted_grand, error_bit_position_counter, error_base_position_counter
                 )
 
             line += 1
@@ -280,9 +320,10 @@ class Glass:
                     # first CRC check failed
                     crc_fail += 1
                     attempted_grand.append((seed, data))
-                    # repaired_dna = grand_crc_repair(dna, max_flips=2)
-                    # repaired_dna = heuristic_grand_crc_repair(dna, max_flips=2)
-                    repaired_dna = basewise_grand_crc_repair(dna, TM_NGS, max_flips=2, top_k_bases=20) # earlier top k - 10
+                    # repaired_dna = grand_crc_repair(dna, max_flips=2) #bruteforce
+                    # repaired_dna = heuristic_grand_crc_repair(dna, max_flips=2, error_bit_position_counter=error_bit_position_counter)
+                    # repaired_dna = basewise_bruteforce_grand(dna, TM_NGS, max_flips=2) # bruteforce
+                    repaired_dna = basewise_grand_crc_repair(dna, TM_NGS, max_flips=2, top_k_bases=20, error_base_position_counter=error_base_position_counter) # earlier top k - 10 #heuristic
                     if repaired_dna:
                         # repaired_strands.append(repaired_dna)
                         seed, data = self.add_dna(repaired_dna) # second crc check after repair
@@ -328,7 +369,7 @@ class Glass:
                 return self.finalize_decoding(
                     line, solve_num, errors, coverage_vs_reads, chunk_seen,
                     crc_pass, crc_fail, grand_pass, grand_fail,
-                    repaired_strands, attempted_grand
+                    repaired_strands, attempted_grand, error_bit_position_counter
                 )
 
 
