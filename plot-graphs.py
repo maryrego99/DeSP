@@ -13,15 +13,15 @@ def clean_data(csv_file):
     df['dropout(seq)'] = pd.to_numeric(df['dropout(seq)'], errors='coerce')
     df['dropout(decode)'] = pd.to_numeric(df['dropout(decode)'], errors='coerce')
 
-    df = df.sort_values(by='mean_coverage')
+    # df = df.sort_values(by='mean_coverage')
 
-    group_size = 3
+    group_size = 5
     mean_rows = []
 
     for i in range(0, len(df) - group_size+1, group_size):
         group = df.iloc[i:i+group_size]
         success_count = (group['decode_success'] == 'Yes').sum()
-        decode_success = 'Yes' if success_count >= 2 else 'No'
+        decode_success = 'Yes' if success_count >= 3 else 'No'
         mean_rows.append({
             'mean_coverage': group['mean_coverage'].mean(),
             'dropout_seq': group['dropout(seq)'].mean(),
@@ -29,18 +29,31 @@ def clean_data(csv_file):
             'decode_success': decode_success
         })
     mean_df = pd.DataFrame(mean_rows)
+    print(mean_df)
     
     return df, mean_df
 
 def get_ecc_label(filename):
-    if "crc_grand" in filename.lower():
-        return "CRC-Grand"
-    elif "crc" in filename.lower():
-        return "CRC"
-    elif "optimized_grand" in filename.lower():
-        return "Optimized-GRAND"
-    elif "rs" in filename.lower():
+    if "rs" in filename.lower():
         return "RS"
+    elif "crc-only" in filename.lower():
+        return "CRC-Only"
+    elif "bitwise" and "bruteforce" in filename.lower():
+        return "Bit-wise Bruteforce"
+    elif "bitwise" and "topk" in filename.lower():
+        return "Bit-wise heuristic with Top K"
+    elif "bitwise" and "nok" in filename.lower():
+        return "Bit-wise heuristic without K limit"
+    elif "bitwise" and "ends" in filename.lower():
+        return "Bit-wise heuristic edge indices"
+    elif "basewise" and "bruteforce" in filename.lower():
+        return "Base-wise Bruteforce"
+    elif "basewise" and "topk" in filename.lower():
+        return "Base-wise heuristic with Top K"
+    elif "basewise" and "nok" in filename.lower():
+        return "Base-wise heuristic without K limit"
+    elif "basewise" and "ends" in filename.lower():
+        return "Base-wise heuristic edge indices"
     return "Unknown"
 
 def plot_dropout(mean_df, alpha, subs_rate, output_path, ecc_label):
@@ -51,26 +64,31 @@ def plot_dropout(mean_df, alpha, subs_rate, output_path, ecc_label):
 
     for i in range(1, len(mean_df)):
         x_vals = mean_df['mean_coverage'].iloc[i-1:i+1]
+        print(f"\nX: {x_vals}")
         y_vals = mean_df['dropout_decode'].iloc[i-1:i+1]
-        color = 'green' if mean_df['decode_success'].iloc[i] == 'Yes' else 'purple'
+        print(f"Y: {y_vals}")
+        color = 'green' if mean_df['decode_success'].iloc[i-1] == 'Yes' else 'purple'
+        if mean_df['decode_success'].iloc[i-1] == 'Yes':
+            print(f"{mean_df['decode_success'].iloc[i-1]} vlaue is yes")
         plt.plot(x_vals, y_vals, marker='x', color=color)
 
 
-    param_text = f'α = {alpha}\nSubstitution Error Rate = {subs_rate}'
-    plt.gca().text(0.70, 0.95, param_text,
-                   transform=plt.gca().transAxes,
-                   fontsize=10,
-                   verticalalignment='top',
-                   bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray'))
+    # param_text = f'α = {alpha}\nSubstitution Error Rate = {subs_rate}'
+    # plt.gca().text(0.70, 0.95, param_text,
+    #                transform=plt.gca().transAxes,
+    #                fontsize=14,
+    #                verticalalignment='top',
+    #                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray'))
 
 
-    plt.xlabel('Mean Coverage')
-    plt.ylabel('% Oligo Dropout')
-    plt.title(f'% Oligo Dropout: Synthesis vs Decode ({ecc_label})')
+    plt.xlabel('Mean Coverage', fontsize=16)
+    plt.ylabel('% Oligo Dropout', fontsize=16)
+    # plt.title(f'% Oligo Dropout: Synthesis vs Decode ({ecc_label})')
+    # plt.title(f'{ecc_label}')
 
-    plt.xticks(np.arange(0, 11, 1))
+    plt.xticks(np.arange(0, 11, 1), fontsize=12)
     plt.xlim(0, 11)
-    plt.yticks(np.arange(0, 111, 10))
+    plt.yticks(np.arange(0, 111, 10), fontsize=12)
     plt.ylim(0, 110)
 
     success_flag = any(mean_df['decode_success'] == 'Yes')
@@ -81,7 +99,7 @@ def plot_dropout(mean_df, alpha, subs_rate, output_path, ecc_label):
         handles.append(success_line)
         labels.append('Decode Successful')
 
-    plt.legend(handles=handles, labels=labels)
+    plt.legend(handles=handles, labels=labels, fontsize=12)
 
     plt.grid(True)
     plt.tight_layout()
@@ -109,12 +127,12 @@ def process_all_files(input_folder, output_folder):
         else:
             output_label = base_name
 
-        output_file = output_label + ".png"
+        output_file = output_label + ".pdf"
 
         output_path = os.path.join(output_folder, output_file)
         plot_dropout(mean_df, alpha, subs_rate, output_path, ecc_label)
 
 if __name__ == "__main__":
-    input_folder = "coverage-analysis/seq-depth/files/oligo_recovery"
-    output_folder = "coverage-analysis/seq-depth/visualizations/dropout_vs_coverage"
+    input_folder = "coverage-analysis/seq-depth/files/final_results"
+    output_folder = "coverage-analysis/seq-depth/visualizations/final_coverage_images"
     process_all_files(input_folder, output_folder)

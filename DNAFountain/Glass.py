@@ -57,7 +57,7 @@ class Glass:
         if isinstance(self.ecc_decoder, CRCGrandDecoder):
             #GRAND uses CRC decoder itself for check
             crc_decoder = CRCDecoder()
-            flag, data_corrected = crc_decoder.decode(data, original_dna=dna_string)
+            flag, data_corrected = crc_decoder.decode(data, original_dna=dna_string)    #first CRC check
         else:
             flag, data_corrected = self.ecc_decoder.decode(data)
 
@@ -223,12 +223,15 @@ class Glass:
 
         plt.figure(figsize=(12, 5))
         plt.bar(positions, frequencies)
-        plt.xlabel(f"{label.capitalize()} Position")
-        plt.ylabel("Frequency in Successful GRAND Repairs")
-        plt.title(f"Position-Based Error Profile ({label.capitalize()} Level)")
+        plt.xlabel(f"{label.capitalize()} Position", fontsize=16)
+        plt.ylabel("Frequency in Successful GRAND Repairs", fontsize=16)
+        # plt.title(f"Position-Based Error Profile ({label.capitalize()} Level)")
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
         plt.tight_layout()
         plt.savefig(output_path)
         plt.close()
+        print("error-profile saved")
     
     
     def finalize_decoding(self, line, solve_num, errors, coverage_vs_reads, chunk_seen,
@@ -239,14 +242,14 @@ class Glass:
             self.log_error_profile(
                 counter=error_bit_position_counter,
                 label="bit",
-                output_path="coverage-analysis/seq-depth/visualizations/error-profile/bit-error-profile.png"
+                output_path="coverage-analysis/seq-depth/visualizations/error-profile/bit-error-profile.pdf"
             )
 
         if error_base_position_counter is not None:
             self.log_error_profile(
             counter=error_base_position_counter,
             label="base",
-            output_path="coverage-analysis/seq-depth/visualizations/error-profile/base-error-profile.png"
+            output_path="coverage-analysis/seq-depth/visualizations/error-profile/base-error-profile.pdf"
         )
 
         print(f"Originally CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads from synthesis: {line}")
@@ -301,7 +304,7 @@ class Glass:
                 )
 
             line += 1
-            seed, data = self.add_dna(dna) # first CRC check
+            seed, data = self.add_dna(dna) # first error check - RS or CRC - based on this seed is set
 
             if isinstance(self.ecc_decoder, ReedSolomonDecoder):
                 if seed == -1:
@@ -320,10 +323,10 @@ class Glass:
                     # first CRC check failed
                     crc_fail += 1
                     attempted_grand.append((seed, data))
-                    # repaired_dna = grand_crc_repair(dna, max_flips=2) #bruteforce
-                    # repaired_dna = heuristic_grand_crc_repair(dna, max_flips=2, error_bit_position_counter=error_bit_position_counter)
-                    # repaired_dna = basewise_bruteforce_grand(dna, TM_NGS, max_flips=2) # bruteforce
-                    repaired_dna = basewise_grand_crc_repair(dna, TM_NGS, max_flips=2, top_k_bases=20, error_base_position_counter=error_base_position_counter) # earlier top k - 10 #heuristic
+                    # repaired_dna = grand_crc_repair(dna, max_flips=2) #bit-wise bruteforce
+                    # repaired_dna = heuristic_grand_crc_repair(dna, max_flips=2, error_bit_position_counter=error_bit_position_counter) #bit-wise heuristic
+                    # repaired_dna = basewise_bruteforce_grand(dna, TM_NGS, max_flips=2) # basewise bruteforce
+                    repaired_dna = basewise_grand_crc_repair(dna, TM_NGS, max_flips=2, top_k_bases=20, error_base_position_counter=error_base_position_counter) # earlier top k - 10 #base wise heuristic
                     if repaired_dna:
                         # repaired_strands.append(repaired_dna)
                         seed, data = self.add_dna(repaired_dna) # second crc check after repair
@@ -369,7 +372,7 @@ class Glass:
                 return self.finalize_decoding(
                     line, solve_num, errors, coverage_vs_reads, chunk_seen,
                     crc_pass, crc_fail, grand_pass, grand_fail,
-                    repaired_strands, attempted_grand, error_bit_position_counter
+                    repaired_strands, attempted_grand, error_bit_position_counter, error_base_position_counter
                 )
 
 

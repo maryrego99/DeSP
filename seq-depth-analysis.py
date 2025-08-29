@@ -143,13 +143,13 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
     decoder_map = {
         "none": NoECCDecoder(),
         "rs": ReedSolomonDecoder(rs_len=4),
-        "crc": CRCDecoder(),
+        "crc-only": CRCDecoder(),
         "crc_grand": CRCGrandDecoder(max_flips=2)
     }
     encoder_map = {
         "none": no_encoder,
         "rs": make_rs_encoder(rs_len=4),
-        "crc": crc32_encoder,
+        "crc-only": crc32_encoder,
         "crc_grand": crc32_encoder
     }
 
@@ -165,6 +165,8 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
     arg = DEFAULT_PASSER
     arg.syn_number = 30
     arg.syn_sub_prob = subs_rate / 3
+    # arg.syn_ins_prob = 0.1s
+    # arg.syn_del_prob = 0.003
     arg.syn_yield = 0.99
     arg.seq_depth = seq_depth
     arg.seq_TM = TM_NGS
@@ -260,7 +262,7 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
             chunks_recovered=sum(chunk_seen),
             total_chunks=len(chunk_seen),
             decode_time=decode_time,
-            out_csv=f"coverage-analysis/seq-depth/files/oligo_recovery/coverage_metrics_{ecc_label}_a{alpha}.csv"
+            out_csv=f"coverage-analysis/seq-depth/files/final_results/{ecc_label}_a{alpha}.csv"
         )
     else:
         log_coverage_metrics(
@@ -270,7 +272,7 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
             params=params,
             decoded_success=decoded_success,
             decode_time=decode_time,
-            out_csv=f"coverage-analysis/seq-depth/files/oligo_recovery/coverage_metrics_{ecc_label}_a{alpha}.csv"
+            out_csv=f"coverage-analysis/seq-depth/files/final_results/{ecc_label}_a{alpha}.csv"
         )
 
     log_data_recovery_metrics(
@@ -280,8 +282,8 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
         out_csv=f"coverage-analysis/seq-depth/files/data_recovery_{ecc_label}_a{alpha}.csv"
     )
 
-    print(f"Chunks seen: {chunk_seen}")
-    print(set(chunk_seen))
+    # print(f"Chunks seen: {chunk_seen}")
+    # print(set(chunk_seen))
     print("Total chunks:", len(chunk_seen))
     print("Recovered chunks:", sum(chunk_seen))
     print(f"% Data Recovered: {sum(chunk_seen)/len(chunk_seen)*100}")

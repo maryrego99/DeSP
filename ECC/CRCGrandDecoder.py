@@ -23,6 +23,7 @@ class CRCGrandDecoder(ECCDecoder):
         if original_dna is None:
             return -1, None, False, False
 
+        print("using CRCGrandDecoder")
         repaired_dna = grand_crc_repair(original_dna, max_flips=self.max_flips)
         if repaired_dna:
             repaired_data = dna_to_int_array(repaired_dna)

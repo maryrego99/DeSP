@@ -60,7 +60,7 @@ def heuristic_grand_crc_repair(dna_string, max_flips=2, error_bit_position_count
 
         top_indices = sorted_indices[:20] # use sorted_indices to remove top k
 
-        for indices in combinations(top_indices, num_flips):
+        for indices in combinations(sorted_indices, num_flips): # sorted_indices or top_indices
             guess = bitstring
             for idx in indices:
                 guess = flip_bit(guess, idx)
@@ -111,11 +111,12 @@ def basewise_grand_crc_repair(dna_string, TM_matrix, max_flips=1, top_k_bases=10
     # print(*base_scores)
 
     base_scores.sort(key=lambda x:-x[3])
-    top_bases = base_scores[:top_k_bases] #use base_scores to take out limit 
-    print(f'Top bases: {top_bases}')
+    top_bases = base_scores[:top_k_bases] 
+    # top_bases = base_scores[:10] + base_scores[-10:]
+    # print(f'Top bases: {top_bases}')
 
     for num_flips in range(1, max_flips + 1):
-        for base_indices in combinations(base_scores, num_flips): #use base_scores to take out limit , else top_k_bases
+        for base_indices in combinations(top_bases, num_flips): #use base_scores to take out limit , else top_k_bases
             def recursive_substitute(index, current_bits):
                 if index == len(base_indices):
                     guess_bytes = bitstring_to_bytes(current_bits)
@@ -152,7 +153,6 @@ def basewise_grand_crc_repair(dna_string, TM_matrix, max_flips=1, top_k_bases=10
             result = recursive_substitute(0, bitstring)
             if result:
                 return result
-
 
     return None
 
