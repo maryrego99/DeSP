@@ -27,33 +27,6 @@ def log_metrics_to_csv(row, out_csv):
     print(f"Logged metrics to {out_csv}")
 
 
-def log_data_recovery_metrics(file_path, total_chunks, recovered_chunks, out_csv):
-    recovery_rate = 100 * recovered_chunks / total_chunks if total_chunks > 0 else 0
-    row = {
-        "input_file": file_path,
-        "total_chunks": total_chunks,
-        "recovered_chunks": recovered_chunks,
-        "recovery_rate(%)": round(recovery_rate, 2),
-        "dropout_rate(%)": round(100 - recovery_rate, 2)
-    }
-    log_metrics_to_csv(row, out_csv)
-
-
-def plot_data_chunk_recovery(chunk_seen, save_path):
-    if not chunk_seen or len(chunk_seen) == 0:
-        print("Warning: chunk_seen is empty. Skipping plot.")
-        return
-    plt.figure(figsize=(10, 2))
-    plt.imshow([chunk_seen], cmap='Greens', aspect='auto')
-    plt.xlabel("Chunk Index")
-    plt.yticks([])
-    plt.title("Recovered Chunks (green = recovered)")
-    plt.tight_layout()
-    plt.savefig(save_path)
-    plt.close()
-    print(f"Chunk recovery plot saved to {save_path}")
-
-
 def log_coverage_metrics(input_file, seq_counts_file, total_oligos, params, decoded_success, decode_time, out_csv):
     with open(seq_counts_file, "r") as f:
         next(f)  #exclude the header
@@ -174,7 +147,8 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
     #encoding
     f = DNAFountain(data, alpha, ecc_encoder=encoder)
     good, tries = f.encode()
-    dna_file = f"{file_path}_encoded_{ecc_label}_a{alpha}.dna"
+    filename = os.path.basename(file_path)
+    dna_file = f"IO/Output/{filename}_encoded_{ecc_label}_a{alpha}.dna"
     f.save(dna_file)
     print('Data encoded into ' ,good, ' DNA strands after ', tries, ' tries.')
     print('Saved to ', dna_file)
@@ -189,14 +163,14 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
     print(dna_file, ' loaded: ', len(in_dnas), ' strands of length ', len(in_dnas[0]))
 
     dnas_syn = Synthesizer(arg)(in_dnas)
-    with open("coverage-analysis/seq-depth/files/syn_dna_counts.csv", "w") as f:
+    with open("coverage-analysis/files/syn_dna_counts.csv", "w") as f:
         f.write("oligo_index,total_copies\n")
         for i, barcode in enumerate(dnas_syn):
             f.write(f"{i},{barcode['num']}\n")
     dnas_dec = Decayer(arg)(dnas_syn)
     dnas_pcr = PCRer(N=12, p=0.8)(dnas_dec)
 
-    with open("coverage-analysis/seq-depth/files/pcr_copy_counts.csv", "w") as f:
+    with open("coverage-analysis/files/pcr_copy_counts.csv", "w") as f:
         f.write("oligo_index,total_copies\n")
         for i, barcode in enumerate(dnas_pcr):
             f.write(f"{i},{barcode['num']}\n")
@@ -208,13 +182,13 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
     dnas_sam = Sampler(p=arg.sam_ratio)(dnas_pcr)
     dnas_seq = Sequencer(arg)(dnas_sam)
 
-    seq_file = f"coverage-analysis/seq-depth/files/seq_copy_counts_{ecc_label}_a{alpha}.csv"
+    seq_file = f"coverage-analysis/files/seq_copy_counts_{ecc_label}_a{alpha}.csv"
     with open(seq_file, "w") as f:
         f.write("oligo_index,total_copies\n")
         for i, barcode in enumerate(dnas_seq):
             f.write(f"{i},{barcode['num']}\n")
 
-    noisy_dna_file = f"{file_path}_errors_{ecc_label}_a{alpha}.dna"
+    noisy_dna_file = f"IO/Output/{filename}_errors_{ecc_label}_a{alpha}.dna"
     save_simu_result(dnas_seq, noisy_dna_file)
     print('Simulation results saved to ', noisy_dna_file)
 
@@ -228,7 +202,7 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
     print(f"Decoding time: {decode_time}")
 
     if ret == 0:
-        g.save(f"{file_path}_decoded_{ecc_label}_a{alpha}.jpg")
+        g.save(f"IO/Output/{file_path}_decoded_{ecc_label}_a{alpha}.jpg")
     elif chunks_done > 0:
         g.save_partial_if_valid("partial_output", chunks, pad=0)
     else:
@@ -248,11 +222,9 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
         "oligos_used_rs_decode": used_oligos
     }
 
-    short_file = os.path.basename(file_path)
-
     if ecc_label == "crc_grand":
         log_grand_coverage_metrics(
-            input_file=short_file,
+            input_file=filename,
             seq_counts_file=seq_file,
             total_oligos=oligos_generated,
             params=params,
@@ -262,45 +234,39 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
             chunks_recovered=sum(chunk_seen),
             total_chunks=len(chunk_seen),
             decode_time=decode_time,
-            out_csv=f"coverage-analysis/seq-depth/files/final_results/{ecc_label}_a{alpha}.csv"
+            out_csv=f"IO/Output/final_results/{ecc_label}_a{alpha}.csv"
         )
     else:
         log_coverage_metrics(
-            input_file=short_file,
+            input_file=file_path,
             seq_counts_file=seq_file,
             total_oligos=oligos_generated,
             params=params,
             decoded_success=decoded_success,
             decode_time=decode_time,
-            out_csv=f"coverage-analysis/seq-depth/files/final_results/{ecc_label}_a{alpha}.csv"
+            out_csv=f"IO/Output/final_results/{ecc_label}_a{alpha}.csv"
         )
 
-    log_data_recovery_metrics(
-        file_path=short_file,
-        total_chunks=N,
-        recovered_chunks=chunks_done,
-        out_csv=f"coverage-analysis/seq-depth/files/data_recovery_{ecc_label}_a{alpha}.csv"
-    )
 
     # print(f"Chunks seen: {chunk_seen}")
     # print(set(chunk_seen))
     print("Total chunks:", len(chunk_seen))
     print("Recovered chunks:", sum(chunk_seen))
     print(f"% Data Recovered: {sum(chunk_seen)/len(chunk_seen)*100}")
+    # print(f"Indices of chunks seen marked as 1: \n{chunk_seen}")
 
-    plot_data_chunk_recovery(chunk_seen, f"coverage-analysis/seq-depth/files/data_recovery/chunk_recovery_{ecc_label}_a{alpha}.png")
 
 
 if __name__ == "__main__":
     # for ecc in ["rs", "crc", "crc_grand"]:
-    for i in np.arange(0.5, 10.5, 0.5):
-        for _ in range(3):
-            analyze_oligo_coverage(
-                "coverage-analysis/seq-depth/files/lena.jpg",
-                alpha=0.5,
-                ecc_type="crc",
-                subs_rate=0.0035,
-                seq_depth=i
-            )
+    # for i in np.arange(0.5, 10.5, 0.5):
+    #     for _ in range(3):
+    #         analyze_oligo_coverage(
+    #             "IO/Input/lena.jpg",
+    #             alpha=0.5,
+    #             ecc_type="crc",
+    #             subs_rate=0.0035,
+    #             seq_depth=i
+    #         )
 
-    # analyze_oligo_coverage("coverage-analysis/seq-depth/files/lena.jpg", alpha=0.5, ecc_type="crc_grand", subs_rate=0.0035, seq_depth=0.5)
+    analyze_oligo_coverage("IO/Input/lena.jpg", alpha=0.5, ecc_type="crc_grand", subs_rate=0.0035, seq_depth=1.7)

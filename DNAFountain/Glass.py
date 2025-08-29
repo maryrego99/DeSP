@@ -165,12 +165,12 @@ class Glass:
             with open(file_name, 'wb') as f:
                 f.write(binary_data)
             print(f"Partial image with valid header saved to: {file_name}")
-            with open("coverage-analysis/seq-depth/files/lena.jpg", "rb") as f:
+            with open("IO/Input/lena.jpg", "rb") as f:
                 original_header = f.read(1024)
 
             patched = original_header + binary_data[1024:]
 
-            with open("patched_partial.jpg", "wb") as f:
+            with open("IO/Output/patched_partial.jpg", "wb") as f:
                 f.write(patched)
         else:
             print("Partial output does not contain a valid image header — not saved.")
@@ -242,14 +242,14 @@ class Glass:
             self.log_error_profile(
                 counter=error_bit_position_counter,
                 label="bit",
-                output_path="coverage-analysis/seq-depth/visualizations/error-profile/bit-error-profile.pdf"
+                output_path="coverage-analysis/visualizations/error-profile/bit-error-profile.pdf"
             )
 
         if error_base_position_counter is not None:
             self.log_error_profile(
             counter=error_base_position_counter,
             label="base",
-            output_path="coverage-analysis/seq-depth/visualizations/error-profile/base-error-profile.pdf"
+            output_path="coverage-analysis/visualizations/error-profile/base-error-profile.pdf"
         )
 
         print(f"Originally CRC Pass: {crc_pass}, CRC Fail: {crc_fail}, Total Reads from synthesis: {line}")
