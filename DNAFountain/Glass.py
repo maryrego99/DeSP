@@ -15,7 +15,7 @@ from ECC.CRCGrandDecoder import CRCGrandDecoder
 from ECC.ecc_encoders import crc32_encoder, make_rs_encoder, no_encoder
 from Model.config import TM_NGS, TM_NNP
 from collections import Counter
-from DNAFountain.CRCHandler import heuristic_grand_crc_repair
+# from DNAFountain.CRCHandler import heuristic_grand_crc_repair
 
 #----------------------------------------------------Glass-------------------------------------------------#        
 class Glass:
@@ -323,10 +323,9 @@ class Glass:
                     # first CRC check failed
                     crc_fail += 1
                     attempted_grand.append((seed, data))
-                    # repaired_dna = grand_crc_repair(dna, max_flips=2) #bit-wise bruteforce
-                    # repaired_dna = heuristic_grand_crc_repair(dna, max_flips=2, error_bit_position_counter=error_bit_position_counter) #bit-wise heuristic
-                    # repaired_dna = basewise_bruteforce_grand(dna, TM_NGS, max_flips=2) # basewise bruteforce
-                    repaired_dna = basewise_grand_crc_repair(dna, TM_NGS, max_flips=2, top_k_bases=20, error_base_position_counter=error_base_position_counter) # earlier top k - 10 #base wise heuristic
+
+                    repaired_dna = self.ecc_decoder.repair(dna, error_bit_position_counter)
+                    
                     if repaired_dna:
                         # repaired_strands.append(repaired_dna)
                         seed, data = self.add_dna(repaired_dna) # second crc check after repair

@@ -1,6 +1,7 @@
 import os
 import csv
 import time
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from Analysis.Fountain_analyzer import FT_Analyzer
@@ -15,6 +16,28 @@ from ECC.CRCDecoder import CRCDecoder
 from ECC.CRCGrandDecoder import CRCGrandDecoder
 from ECC.ecc_encoders import crc32_encoder, make_rs_encoder, no_encoder
 from Analysis.Analysis import save_simu_result
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--input_file',type=str, required=True, help='Input file path')
+parser.add_argument('--alpha', type=float, default=0.5)
+parser.add_argument('--sam_ratio',type=float, default=0.01)
+parser.add_argument('--subs_rate',type=float, default=0.0035)
+parser.add_argument('--ecc_type',type=str, default='rs', choices=['none', 'rs', 'crc_only', 'crc_grand'])
+parser.add_argument('--seq_depth',type=float, default=10)
+parser.add_argument('--top_k',type=int, default=20, help='Top-K bits/bases to consider for heuristic GRAND')
+parser.add_argument('--multi_run',action='store_true', help='Run multiple experiments with varying sequencing depths')
+parser.add_argument('--grand_variant',type=str, default='bitwise_brute', choices=[
+                    'bitwise_brute',
+                    'bitwise_heuristic_topk',
+                    'bitwise_heuristic_nok',
+                    'bitwise_heuristic_edges',
+                    'basewise_brute',
+                    'basewise_heuristic_topk',
+                    'basewise_heuristic_nok',
+                    'basewise_heuristic_edges'
+                    ], help='Choose the GRAND variant to use')
+
+args = parser.parse_args()
 
 
 def log_metrics_to_csv(row, out_csv):
@@ -116,13 +139,16 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
     decoder_map = {
         "none": NoECCDecoder(),
         "rs": ReedSolomonDecoder(rs_len=4),
-        "crc-only": CRCDecoder(),
-        "crc_grand": CRCGrandDecoder(max_flips=2)
+        "crc_only": CRCDecoder(),
+        "crc_grand": CRCGrandDecoder(max_flips=2, 
+                                     grand_variant=args.grand_variant,
+                                     top_k=args.top_k,
+                                     TM_matrix=TM_NGS)
     }
     encoder_map = {
         "none": no_encoder,
         "rs": make_rs_encoder(rs_len=4),
-        "crc-only": crc32_encoder,
+        "crc_only": crc32_encoder,
         "crc_grand": crc32_encoder
     }
 
@@ -202,7 +228,7 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
     print(f"Decoding time: {decode_time}")
 
     if ret == 0:
-        g.save(f"IO/Output/{file_path}_decoded_{ecc_label}_a{alpha}.jpg")
+        g.save(f"IO/Output/{filename}_decoded_{ecc_label}_a{alpha}.jpg")
     elif chunks_done > 0:
         g.save_partial_if_valid("partial_output", chunks, pad=0)
     else:
@@ -221,6 +247,9 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
         "subs_rate": subs_rate,
         "oligos_used_rs_decode": used_oligos
     }
+
+
+    #Logging
 
     if ecc_label == "crc_grand":
         log_grand_coverage_metrics(
@@ -258,15 +287,17 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
 
 
 if __name__ == "__main__":
-    # for ecc in ["rs", "crc", "crc_grand"]:
-    # for i in np.arange(0.5, 10.5, 0.5):
-    #     for _ in range(3):
-    #         analyze_oligo_coverage(
-    #             "IO/Input/lena.jpg",
-    #             alpha=0.5,
-    #             ecc_type="crc",
-    #             subs_rate=0.0035,
-    #             seq_depth=i
-    #         )
-
-    analyze_oligo_coverage("IO/Input/lena.jpg", alpha=0.5, ecc_type="crc_grand", subs_rate=0.0035, seq_depth=1.7)
+    if args.multi_run:
+        for i in np.arange(0.5, 10.5, 0.5):       #Multiple runs
+            for _ in range(3):
+                analyze_oligo_coverage(
+                    args.input_file, 
+                    alpha=args.alpha, 
+                    ecc_type=args.ecc_type, 
+                    subs_rate=args.subs_rate, 
+                    seq_depth=i)
+                
+    else:
+        # analyze_oligo_coverage("IO/Input/lena.jpg", alpha=0.5, ecc_type="crc_grand", subs_rate=0.0035, seq_depth=1.7)
+        analyze_oligo_coverage(args.input_file, alpha=args.alpha, ecc_type=args.ecc_type, 
+                               subs_rate=args.subs_rate, seq_depth=args.seq_depth)
