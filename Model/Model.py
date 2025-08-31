@@ -264,12 +264,12 @@ class ErrorAdder:
 
         for i in range(dna_len):
             base = dna[i]
-            base_idx = base_to_idx[base]
+            base_index = base_to_idx[base]
 
-            tm_row = np.array(self.TM[base_idx])
+            tm_row = np.array(self.TM[base_index])
             scaled_tm = tm_row * pos_error_probs[i]
 
-            scaled_tm[base_idx] = 1.0 - pos_error_probs[i]
+            scaled_tm[base_index] = 1.0 - pos_error_probs[i]
 
             # normalize
             scaled_tm /= scaled_tm.sum()

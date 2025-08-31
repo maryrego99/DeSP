@@ -51,8 +51,8 @@ def bitwise_heuristic_edges(dna_string, max_flips=2, strategy="brute", top_k=20,
     for num_flips in range(1, max_flips + 1):
         for indices in combinations(search_space, num_flips): # sorted_indices or top_indices
             guess = bitstring
-            for idx in indices:
-                guess = flip_bit(guess, idx)
+            for i in indices:
+                guess = flip_bit(guess, i)
             guess_bytes = bitstring_to_bytes(guess)
             if is_valid_crc(guess_bytes):
                 repaired = list(guess_bytes)
@@ -80,8 +80,8 @@ def bitwise_heuristic_topk(dna_string, max_flips=2, top_k=20, position_error_cou
 
         for indices in combinations(top_indices, num_flips): # sorted_indices or top_indices
             guess = bitstring
-            for idx in indices:
-                guess = flip_bit(guess, idx)
+            for i in indices:
+                guess = flip_bit(guess, i)
             guess_bytes = bitstring_to_bytes(guess)
             if is_valid_crc(guess_bytes):
                 repaired = list(guess_bytes)
@@ -105,8 +105,8 @@ def bitwise_heuristic_nok(dna_string, max_flips=2, position_error_counter=None):
 
         for indices in combinations(sorted_indices, num_flips): # sorted_indices or top_indices
             guess = bitstring
-            for idx in indices:
-                guess = flip_bit(guess, idx)
+            for i in indices:
+                guess = flip_bit(guess, i)
             guess_bytes = bitstring_to_bytes(guess)
             if is_valid_crc(guess_bytes):
                 repaired = list(guess_bytes)
@@ -123,8 +123,8 @@ def bitwise_brute(dna_string, max_flips=2, position_error_counter=None):
     for num_flips in range(1, max_flips + 1):
         for indices in combinations(range(length), num_flips):
             guess = bitstring
-            for idx in indices:
-                guess = flip_bit(guess, idx)
+            for i in indices:
+                guess = flip_bit(guess, i)
             guess_bytes = bitstring_to_bytes(guess)
             if is_valid_crc(guess_bytes):
                 repaired = list(guess_bytes)
@@ -162,8 +162,8 @@ def basewise_brute(dna_string, max_flips=1, top_k_bases=10):
             print(f"Inalid bits at {i}")
             continue
         base = BIT_TO_BASE[bits]
-        base_idx = BASE_TO_INDEX[base]
-        base_positions.append((i, base, base_idx)) 
+        base_index = BASE_TO_INDEX[base]
+        base_positions.append((i, base, base_index)) 
 
     for num_flips in range(1, max_flips + 1):
         for base_indices in combinations(base_positions, num_flips):
@@ -175,7 +175,7 @@ def basewise_brute(dna_string, max_flips=1, top_k_bases=10):
                         return int_array_to_dna(list(guess_bytes))
                     return None
 
-                i, base, base_idx = base_indices[index]
+                i, base, base_index = base_indices[index]
                 for target_idx in range(4):
                     target_base = BASES[target_idx]
                     if target_base == base:
@@ -208,9 +208,9 @@ def basewise_heuristic_topk(dna_string, TM_matrix, max_flips=1, top_k=10, positi
             print(f"Inalid bits at {i}")
             continue
         base = BIT_TO_BASE[bits]
-        base_idx = BASE_TO_INDEX[base]
+        base_index = BASE_TO_INDEX[base]
         bit_score = (bit_error_prob[i] + bit_error_prob[i+1])/2 #position based error probability
-        base_scores.append((i, base, base_idx, bit_score))
+        base_scores.append((i, base, base_index, bit_score))
 
     base_scores.sort(key=lambda x:-x[3])
     top_bases = base_scores[:top_k] 
@@ -230,14 +230,14 @@ def basewise_heuristic_topk(dna_string, TM_matrix, max_flips=1, top_k=10, positi
                         return int_array_to_dna(list(guess_bytes))
                     return None
 
-                i, base, base_idx, _ = base_indices[index]
+                i, base, base_index, _ = base_indices[index]
                 possible_substitutions = []
 
                 for target_index in range(4):
                     target_base = BASES[target_index]
                     if target_base == base:
                         continue
-                    substitution_prob = TM_matrix[base_idx][target_index]
+                    substitution_prob = TM_matrix[base_index][target_index]
                     possible_substitutions.append((target_base, substitution_prob))
 
                 # Sort substitutions by likelihood (descending)
@@ -273,9 +273,9 @@ def basewise_heuristic_nok(dna_string, TM_matrix, max_flips=1, position_error_co
             print(f"Inalid bits at {i}")
             continue
         base = BIT_TO_BASE[bits]
-        base_idx = BASE_TO_INDEX[base]
+        base_index = BASE_TO_INDEX[base]
         bit_score = (bit_error_prob[i] + bit_error_prob[i+1])/2 #position based error probability
-        base_scores.append((i, base, base_idx, bit_score))
+        base_scores.append((i, base, base_index, bit_score))
 
     base_scores.sort(key=lambda x:-x[3])
     # top_bases = base_scores[:10] + base_scores[-10:]
@@ -294,14 +294,14 @@ def basewise_heuristic_nok(dna_string, TM_matrix, max_flips=1, position_error_co
                         return int_array_to_dna(list(guess_bytes))
                     return None
 
-                i, base, base_idx, _ = base_indices[index]
+                i, base, base_index, _ = base_indices[index]
                 possible_substitutions = []
 
                 for target_index in range(4):
                     target_base = BASES[target_index]
                     if target_base == base:
                         continue
-                    substitution_prob = TM_matrix[base_idx][target_index]
+                    substitution_prob = TM_matrix[base_index][target_index]
                     possible_substitutions.append((target_base, substitution_prob))
 
                 # Sort substitutions by likelihood (descending)
@@ -337,9 +337,9 @@ def basewise_heuristic_edges(dna_string, TM_matrix, max_flips=2, position_error_
             print(f"Inalid bits at {i}")
             continue
         base = BIT_TO_BASE[bits]
-        base_idx = BASE_TO_INDEX[base]
+        base_index = BASE_TO_INDEX[base]
         # bit_score = (bit_error_prob[i] + bit_error_prob[i+1])/2 #position based error probability
-        base_scores.append((i, base, base_idx))
+        base_scores.append((i, base, base_index))
 
     top_bases = base_scores[:10] + base_scores[-10:]
     # print(f'Top bases: {top_bases}')
@@ -357,14 +357,14 @@ def basewise_heuristic_edges(dna_string, TM_matrix, max_flips=2, position_error_
                         return int_array_to_dna(list(guess_bytes))
                     return None
 
-                i, base, base_idx = base_indices[index]
+                i, base, base_index = base_indices[index]
                 possible_substitutions = []
 
                 for target_index in range(4):
                     target_base = BASES[target_index]
                     if target_base == base:
                         continue
-                    substitution_prob = TM_matrix[base_idx][target_index]
+                    substitution_prob = TM_matrix[base_index][target_index]
                     possible_substitutions.append((target_base, substitution_prob))
 
                 # Sort substitutions by likelihood (descending)

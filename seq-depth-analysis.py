@@ -22,7 +22,7 @@ parser.add_argument('--input_file',type=str, required=True, help='Input file pat
 parser.add_argument('--alpha', type=float, default=0.5)
 parser.add_argument('--sam_ratio',type=float, default=0.01)
 parser.add_argument('--subs_rate',type=float, default=0.0035)
-parser.add_argument('--ecc_type',type=str, default='rs', choices=['none', 'rs', 'crc_only', 'crc_grand'])
+parser.add_argument('--ecc_type',type=str, default='rs', choices=['none','rs','crc_only','crc_grand'])
 parser.add_argument('--seq_depth',type=float, default=10)
 parser.add_argument('--top_k',type=int, default=20, help='Top-K bits/bases to consider for heuristic GRAND')
 parser.add_argument('--multi_run',action='store_true', help='Run multiple experiments with varying sequencing depths')
@@ -118,18 +118,18 @@ def log_grand_coverage_metrics(input_file, seq_counts_file, total_oligos, params
         "total_oligos": total_oligos,
         "total_reads": total_reads,
         "mean_coverage": round(mean_coverage, 2),
-        "oligo_recovery(seq)": round(percent_seen, 2),
+        "oligo_recovery(seq)": round(percent_seen,2),
         "dropout(seq)": round(dropout_rate, 2),
-        "oligo_recovery(decode)": round(decode_recovery_rate, 2),
+        "oligo_recovery(decode)": round(decode_recovery_rate,2),
         "dropout(decode)": round(decode_dropout_rate, 2),
         "GRAND_pass_oligos": grand_pass,
         "GRAND_fail_oligos": grand_fail,
-        "GRAND_success_rate": round(grand_success, 2),
+        "GRAND_success_rate": round(grand_success,2),
         "chunks_recovered": chunks_recovered,
         "total_chunks": total_chunks,
-        "data_recovery": round(data_recovered, 2),
+        "data_recovery": round(data_recovered,2),
         "decode_success": "Yes" if decoded_success else "No",
-        "decode_time": round(decode_time, 2)
+        "decode_time": round(decode_time,2)
     }
     log_metrics_to_csv(row, out_csv)
 
@@ -263,7 +263,7 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
             chunks_recovered=sum(chunk_seen),
             total_chunks=len(chunk_seen),
             decode_time=decode_time,
-            out_csv=f"IO/Output/final_results/{ecc_label}_a{alpha}.csv"
+            out_csv=f"IO/Output/final_csvs/{ecc_label}_a{alpha}.csv"
         )
     else:
         log_coverage_metrics(
@@ -273,7 +273,7 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
             params=params,
             decoded_success=decoded_success,
             decode_time=decode_time,
-            out_csv=f"IO/Output/final_results/{ecc_label}_a{alpha}.csv"
+            out_csv=f"IO/Output/final_csvs/{ecc_label}_a{alpha}.csv"
         )
 
 
