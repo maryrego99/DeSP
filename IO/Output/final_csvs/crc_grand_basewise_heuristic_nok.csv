@@ -1,0 +1,2 @@
+input_file,α,sam_ratio,subs_rate,rs,total_oligos,total_reads,mean_coverage,oligo_recovery(seq),dropout(seq),oligo_recovery(decode),dropout(decode),GRAND_pass_oligos,GRAND_fail_oligos,GRAND_success_rate,chunks_recovered,total_chunks,data_recovery,decode_success,decode_time
+lena.jpg,0.5,0.01,0.0035,,644,2287,3.55,94.72,5.28,81.37,18.63,75,0,100.0,429,429,100.0,Yes,0.75

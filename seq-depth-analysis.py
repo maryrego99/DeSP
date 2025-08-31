@@ -131,7 +131,8 @@ def log_grand_coverage_metrics(input_file, seq_counts_file, total_oligos, params
         "decode_success": "Yes" if decoded_success else "No",
         "decode_time": round(decode_time,2)
     }
-    log_metrics_to_csv(row, out_csv)
+    grand_csv = f"IO/Output/final_csvs/{args.ecc_type}_{args.grand_variant}.csv"
+    log_metrics_to_csv(row, grand_csv)
 
 
 def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.003, seq_depth=10):
@@ -273,7 +274,7 @@ def analyze_oligo_coverage(file_path, alpha, ecc_type="CRC_GRAND", subs_rate=0.0
             params=params,
             decoded_success=decoded_success,
             decode_time=decode_time,
-            out_csv=f"IO/Output/final_csvs/{ecc_label}_a{alpha}.csv"
+            out_csv=f"IO/Output/final_csvs/{ecc_label}.csv"
         )
 
 
